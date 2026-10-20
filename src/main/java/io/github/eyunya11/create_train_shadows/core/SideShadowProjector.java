@@ -29,8 +29,6 @@ public final class SideShadowProjector {
     /** Lifted off the wall by the same small distance as the shadow on the ground, against z-fighting. */
     public static final double LIFT = ShadowProjector.LIFT;
 
-    /** How many block rows under the lowest part of the body are looked at. */
-    static final int ROWS_BELOW = 3;
     /** Over this many blocks above the top of the body the shadow on a wall fades out. */
     static final double TOP_FADE = 1.0;
 
@@ -118,7 +116,8 @@ public final class SideShadowProjector {
             }
         }
 
-        int firstRow = (int) Math.floor(lowest) - ROWS_BELOW;
+        // Down to where the fade under the body has reached zero (a pillar's side is shaded all the way)
+        int firstRow = (int) Math.floor(lowest) - ShadowOpacity.rowsBelow(params);
         int lastRow = (int) Math.ceil(highest + TOP_FADE) - 1;
         for (int cellX = (int) Math.floor(minX - reach); cellX <= (int) Math.floor(maxX + reach); cellX++) {
             for (int cellZ = (int) Math.floor(minZ - reach); cellZ <= (int) Math.floor(maxZ + reach); cellZ++) {

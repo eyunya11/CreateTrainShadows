@@ -79,6 +79,16 @@ class ShadowOpacityTest {
     }
 
     @Test
+    void rowsBelowReachWhereTheFadeHasRunOut() {
+        assertEquals(3, ShadowOpacity.rowsBelow(VANILLA));
+        assertEquals(10, ShadowOpacity.rowsBelow(DEFAULT));
+        // the row that is the last one looked at is entirely past the end of the fade
+        assertTrue(ShadowOpacity.rowsBelow(DEFAULT) - 1 >= DEFAULT.graceHeight() + DEFAULT.fadeHeight());
+        assertEquals(ShadowOpacity.MAX_DEPTH,
+            ShadowOpacity.rowsBelow(new ShadowParams(0.6, 128, 32, 8, 0, 0, 0, 0, TrackMode.OFF)));
+    }
+
+    @Test
     void searchDepthIsCapped() {
         assertEquals(ShadowOpacity.MAX_DEPTH, ShadowOpacity.searchDepth(new ShadowParams(0.6, 128, 32, 8, 0, 0, 0, 0, TrackMode.OFF), 100));
     }

@@ -248,8 +248,42 @@ class SideShadowProjectorTest {
         for (int[] cell : asked) {
             assertTrue(cell[0] >= 8 && cell[0] <= 15, "x " + cell[0]);
             assertTrue(cell[2] >= 18 && cell[2] <= 29, "z " + cell[2]);
-            assertTrue(cell[1] >= 2 && cell[1] <= 8, "row " + cell[1]);
+            assertTrue(cell[1] >= 5 - ShadowOpacity.rowsBelow(PARAMS) && cell[1] <= 8, "row " + cell[1]);
         }
+    }
+
+    @Test
+    void theSideOfAPillarIsShadedAllTheWayDownUntilTheFadeRunsOut() {
+        // A wall at x = 15 from the ground at y = 4 down to y = -20: a tall pillar under a bridge.
+        SideShadowProjector.Walls pillar = (cx, y, cz, out) -> {
+            if (cx == 14 && y < 5) {
+                out[0] = 1.0;
+                return SideShadowProjector.PLUS_X;
+            }
+            return 0;
+        };
+        List<Quad> quads = run(BODY, PLACE, PARAMS, 1.0, pillar);
+        double lowestShaded = Double.MAX_VALUE;
+        double darkestAtTheBottom = 0;
+        for (Quad q : quads) {
+            for (int i = 0; i < 4; i++) {
+                assertEquals(expected(q.xs()[i], q.ys()[i], q.zs()[i], 1.0, 1.0), q.alphas()[i], 1e-6,
+                    "y=" + q.ys()[i]);
+                if (q.alphas()[i] > 0) {
+                    lowestShaded = Math.min(lowestShaded, q.ys()[i]);
+                }
+            }
+        }
+        // still shaded 6 blocks under the underside (it used to stop 3 rows down, while still dark)
+        assertTrue(lowestShaded < 5 - 6, "lowest shaded point " + lowestShaded);
+        for (Quad q : quads) {
+            for (int i = 0; i < 4; i++) {
+                if (q.ys()[i] <= 5 - 9) {
+                    darkestAtTheBottom = Math.max(darkestAtTheBottom, q.alphas()[i]);
+                }
+            }
+        }
+        assertEquals(0.0, darkestAtTheBottom, 1e-9, "the shadow has faded out by 9 blocks under the body");
     }
 
     @Test

@@ -43,4 +43,14 @@ public final class ShadowOpacity {
         int depth = (int) Math.ceil(params.graceHeight() + params.fadeHeight() + standoff) + 1;
         return Math.max(1, Math.min(MAX_DEPTH, depth));
     }
+
+    /**
+     * How many block rows under the lowest part of the body can still be darkened by something that is not
+     * the ground straight below it (the side of a pillar, a track under a bridge): as many as it takes for the
+     * fade to reach zero. Stopping earlier would cut the shadow off while it is still dark.
+     */
+    public static int rowsBelow(ShadowParams params) {
+        int rows = (int) Math.ceil(params.graceHeight() + params.fadeHeight()) + 1;
+        return Math.max(1, Math.min(MAX_DEPTH, rows));
+    }
 }

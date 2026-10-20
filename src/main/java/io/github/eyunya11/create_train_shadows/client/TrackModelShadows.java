@@ -49,7 +49,6 @@ final class TrackModelShadows {
     /** Faces are looked at in groups of this many, with a box around each group, to skip far ones quickly. */
     private static final int GROUP = 32;
     private static final double SLACK = 1.5;
-    private static final int ROWS_BELOW = 4;
     private static final int MAX_CACHED_BLOCKS = 4096;
 
     /** Recorded faces: positions relative to an origin block, and a box around each group of faces. */
@@ -115,7 +114,7 @@ final class TrackModelShadows {
         try {
             begin(level);
             field.set(footprints.ground(), localToWorld, params, distanceFactor);
-            drawBlocks(out);
+            drawBlocks(ShadowOpacity.rowsBelow(params), out);
             drawCurves(carriage, out);
         } catch (RuntimeException | LinkageError e) {
             // The models and Create's classes are not ours; if one behaves differently than expected, lose
@@ -144,10 +143,10 @@ final class TrackModelShadows {
 
     // --- track blocks
 
-    private void drawBlocks(ShadowDrawer out) {
+    private void drawBlocks(int rowsBelow, ShadowDrawer out) {
         int fromX = Mth.floor(field.minX() - SLACK), toX = Mth.floor(field.maxX() + SLACK);
         int fromZ = Mth.floor(field.minZ() - SLACK), toZ = Mth.floor(field.maxZ() + SLACK);
-        int fromY = Mth.floor(field.minY()) - ROWS_BELOW, toY = Mth.floor(field.maxY());
+        int fromY = Mth.floor(field.minY()) - rowsBelow, toY = Mth.floor(field.maxY());
         for (int x = fromX; x <= toX; x++) {
             for (int z = fromZ; z <= toZ; z++) {
                 for (int y = fromY; y <= toY; y++) {
