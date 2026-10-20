@@ -19,6 +19,7 @@ import io.github.eyunya11.create_train_shadows.core.ShadowOpacity;
 import io.github.eyunya11.create_train_shadows.core.ShadowParams;
 import io.github.eyunya11.create_train_shadows.core.ShadowProjector;
 import io.github.eyunya11.create_train_shadows.core.ShadowRect;
+import io.github.eyunya11.create_train_shadows.core.SideShadowProjector;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -37,8 +38,10 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
         RenderType.entityNoOutline(ResourceLocation.withDefaultNamespace("textures/misc/white.png"));
 
     private final ShadowProjector projector = new ShadowProjector();
+    private final SideShadowProjector sideProjector = new SideShadowProjector();
     private final ShadowDrawer drawer = new ShadowDrawer();
     private final LevelGround ground = new LevelGround();
+    private final LevelWalls walls = new LevelWalls();
     private boolean loggedFirstRender;
     private boolean loggedFirstShadow;
 
@@ -94,7 +97,8 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
         if (distanceFactor <= 0) {
             return Outcome.TOO_FAR;
         }
-        List<ShadowRect> footprint = FootprintCache.get(contraption, params);
+        FootprintCache.Footprints footprints = FootprintCache.get(contraption, params);
+        List<ShadowRect> footprint = footprints.ground();
         if (footprint.isEmpty()) {
             return Outcome.NO_FOOTPRINT;
         }
@@ -116,6 +120,8 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
         VertexConsumer consumer = buffers.getBuffer(SHADOW_LAYER);
         drawer.begin(consumer, ms.last(), x, y, z);
         projector.project(footprint, localToWorld, params, distanceFactor, ground.use(level), drawer);
+        sideProjector.project(footprints.walls(), footprints.topY(), localToWorld, params, distanceFactor,
+            walls.use(level), drawer);
         Diagnostics.drawn(drawer.polygonCount(), Math.sqrt(distanceSq));
         return Outcome.DRAWN;
     }

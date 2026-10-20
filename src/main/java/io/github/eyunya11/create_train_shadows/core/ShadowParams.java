@@ -11,12 +11,15 @@ package io.github.eyunya11.create_train_shadows.core;
  * @param margin       how far the shadow reaches past the footprint on every side, in blocks
  * @param softness     width of the band along the outer edge of the shadow in which it fades from nothing to
  *                     full darkness, in blocks; 0 gives a hard edge
+ * @param sideReach    how far from the body, in blocks, the side of a wall is still darkened; 0 draws no
+ *                     shadow on walls (vanilla shadows only fall on the ground)
+ * @param sideOpacity  alpha of the darkest part of a wall's shadow, right next to the body
  */
 public record ShadowParams(double opacity, double fadeDistance, double fadeHeight, double graceHeight,
-    double margin, double softness) {
+    double margin, double softness, double sideReach, double sideOpacity) {
     /** What the vanilla entity shadow does, for comparison and for tests. */
-    public static final ShadowParams VANILLA = new ShadowParams(0.5, 16.0, 2.0, 0.0, 0.0, 0.0);
+    public static final ShadowParams VANILLA = new ShadowParams(0.5, 16.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 
     /** The defaults of the mod's configuration. */
-    public static final ShadowParams DEFAULT = new ShadowParams(0.6, 128.0, 8.0, 1.0, 0.5, 0.5);
+    public static final ShadowParams DEFAULT = new ShadowParams(0.6, 128.0, 8.0, 1.0, 0.5, 0.5, 2.0, 0.5);
 }

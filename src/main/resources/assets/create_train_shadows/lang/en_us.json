@@ -13,5 +13,9 @@
   "create_train_shadows.configuration.margin": "Shadow spread",
   "create_train_shadows.configuration.margin.tooltip": "How far the shadow reaches past the outline of the train on every side, in blocks.",
   "create_train_shadows.configuration.softness": "Edge softness",
-  "create_train_shadows.configuration.softness.tooltip": "Width of the band along the outer edge of the shadow in which it fades from nothing to full darkness, in blocks. 0 gives a hard edge."
+  "create_train_shadows.configuration.softness.tooltip": "Width of the band along the outer edge of the shadow in which it fades from nothing to full darkness, in blocks. 0 gives a hard edge.",
+  "create_train_shadows.configuration.sideReach": "Wall shadow reach",
+  "create_train_shadows.configuration.sideReach.tooltip": "How far from a train, in blocks, the sides of walls (tunnel walls, platform edges, steps in the ground) are darkened. The wall is darkest next to the train and fades out with distance. 0 draws no shadow on walls.",
+  "create_train_shadows.configuration.sideOpacity": "Wall shadow darkness",
+  "create_train_shadows.configuration.sideOpacity.tooltip": "How dark a wall gets right next to the train, in full light."
 }

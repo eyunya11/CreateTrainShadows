@@ -55,6 +55,18 @@ public final class Config {
         .translation("create_train_shadows.configuration.softness")
         .defineInRange("softness", DEFAULTS.softness(), 0.0, 2.0);
 
+    private static final ModConfigSpec.DoubleValue SIDE_REACH = BUILDER
+        .comment("How far from a train, in blocks, the sides of walls are darkened: tunnel walls, platform edges and",
+            "steps in the ground. The wall is darkest right next to the train and fades out with distance.",
+            "0 draws no shadow on walls.")
+        .translation("create_train_shadows.configuration.sideReach")
+        .defineInRange("sideReach", DEFAULTS.sideReach(), 0.0, 4.0);
+
+    private static final ModConfigSpec.DoubleValue SIDE_OPACITY = BUILDER
+        .comment("How dark a wall gets right next to the train, in full light.")
+        .translation("create_train_shadows.configuration.sideOpacity")
+        .defineInRange("sideOpacity", DEFAULTS.sideOpacity(), 0.0, 1.0);
+
     static final ModConfigSpec SPEC = BUILDER.build();
 
     private static volatile boolean enabled = true;
@@ -78,6 +90,6 @@ public final class Config {
         }
         enabled = ENABLED.get();
         params = new ShadowParams(OPACITY.get(), FADE_DISTANCE.get(), FADE_HEIGHT.get(), GRACE_HEIGHT.get(),
-            MARGIN.get(), SOFTNESS.get());
+            MARGIN.get(), SOFTNESS.get(), SIDE_REACH.get(), SIDE_OPACITY.get());
     }
 }

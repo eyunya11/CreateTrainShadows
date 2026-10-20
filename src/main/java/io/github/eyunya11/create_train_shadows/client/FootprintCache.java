@@ -15,7 +15,15 @@ import net.minecraft.core.BlockPos;
 
 /** Shadow footprints of contraptions, rebuilt only when the set of blocks or the shape settings change. */
 final class FootprintCache {
-    private record Entry(int blockCount, double margin, double softness, List<ShadowRect> rects) {
+    /**
+     * @param ground the shadow on the ground: grown by the margin, with a soft edge
+     * @param walls  the footprint itself, which is what walls are measured from
+     * @param topY   the local height of the top of the highest block
+     */
+    record Footprints(List<ShadowRect> ground, List<ShadowRect> walls, double topY) {
+    }
+
+    private record Entry(int blockCount, double margin, double softness, Footprints footprints) {
     }
 
     // Weak keys: a contraption that is disassembled or unloaded takes its footprint with it.
@@ -24,33 +32,34 @@ final class FootprintCache {
     private FootprintCache() {
     }
 
-    static List<ShadowRect> get(Contraption contraption, ShadowParams params) {
-        double margin = params.margin();
-        double softness = params.softness();
-
+    static Footprints get(Contraption contraption, ShadowParams params) {
         // While a carriage is crossing a portal, parts of it are hidden and that changes every frame.
         if (contraption instanceof CarriageContraption carriage && !carriage.notInPortal()) {
-            return Footprint.soft(build(contraption, true), margin, softness);
+            return build(contraption, true, params);
         }
 
         int blockCount = contraption.getBlocks().size();
         Entry cached = CACHE.get(contraption);
-        if (cached == null || cached.blockCount() != blockCount || cached.margin() != margin
-            || cached.softness() != softness) {
-            cached = new Entry(blockCount, margin, softness, Footprint.soft(build(contraption, false), margin, softness));
+        if (cached == null || cached.blockCount() != blockCount || cached.margin() != params.margin()
+            || cached.softness() != params.softness()) {
+            cached = new Entry(blockCount, params.margin(), params.softness(), build(contraption, false, params));
             CACHE.put(contraption, cached);
         }
-        return cached.rects();
+        return cached.footprints();
     }
 
-    private static List<LocalRect> build(Contraption contraption, boolean skipHiddenInPortal) {
+    private static Footprints build(Contraption contraption, boolean skipHiddenInPortal, ShadowParams params) {
         Footprint.Builder footprint = new Footprint.Builder();
+        int top = Integer.MIN_VALUE;
         for (BlockPos pos : contraption.getBlocks().keySet()) {
             if (skipHiddenInPortal && contraption.isHiddenInPortal(pos)) {
                 continue;
             }
             footprint.add(pos.getX(), pos.getY(), pos.getZ());
+            top = Math.max(top, pos.getY() + 1);
         }
-        return footprint.build();
+        List<LocalRect> rects = footprint.build();
+        return new Footprints(Footprint.soft(rects, params.margin(), params.softness()),
+            Footprint.expand(rects, 0), top);
     }
 }
