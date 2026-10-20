@@ -104,6 +104,8 @@ dependencies {
     // list Flywheel's API as compile scope), so the Flywheel API is declared here for compiling.
     compileOnly "com.simibubi.create:create-${minecraft_version}:${create_version_compile}"
     compileOnly "dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}"
+    // Create's entity types are Registrate entries, and javac needs the class to resolve AllEntityTypes
+    compileOnly "com.tterrag.registrate:Registrate:${registrate_version}"
 
     // Create's jar already bundles Registrate, Flywheel and Ponder (jar-in-jar), so a non-transitive
     // runtime dependency runs exactly the versions that Create release ships with. The published POMs
