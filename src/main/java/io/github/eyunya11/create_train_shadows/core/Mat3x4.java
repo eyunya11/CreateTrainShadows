@@ -72,6 +72,24 @@ public final class Mat3x4 {
             m20 * first.m03 + m21 * first.m13 + m22 * first.m23 + m23);
     }
 
+    /** The transform that undoes this one. */
+    public Mat3x4 inverse() {
+        double c00 = m11 * m22 - m12 * m21;
+        double c01 = m02 * m21 - m01 * m22;
+        double c02 = m01 * m12 - m02 * m11;
+        double det = m00 * c00 + m10 * c01 + m20 * c02;
+        if (Math.abs(det) < 1.0e-12) {
+            throw new IllegalStateException("not invertible");
+        }
+        double i00 = c00 / det, i01 = c01 / det, i02 = c02 / det;
+        double i10 = (m12 * m20 - m10 * m22) / det, i11 = (m00 * m22 - m02 * m20) / det, i12 = (m02 * m10 - m00 * m12) / det;
+        double i20 = (m10 * m21 - m11 * m20) / det, i21 = (m01 * m20 - m00 * m21) / det, i22 = (m00 * m11 - m01 * m10) / det;
+        return new Mat3x4(
+            i00, i01, i02, -(i00 * m03 + i01 * m13 + i02 * m23),
+            i10, i11, i12, -(i10 * m03 + i11 * m13 + i12 * m23),
+            i20, i21, i22, -(i20 * m03 + i21 * m13 + i22 * m23));
+    }
+
     public double x(double x, double y, double z) {
         return m00 * x + m01 * y + m02 * z + m03;
     }

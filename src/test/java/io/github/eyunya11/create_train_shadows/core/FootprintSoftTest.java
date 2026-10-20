@@ -54,6 +54,29 @@ class FootprintSoftTest {
     }
 
     @Test
+    void theFadeOfARectangleIsTheOneTheMeshIsDrawnWith() {
+        List<ShadowRect> mesh = Footprint.soft(List.of(new LocalRect(0, 0, 6, 2, 0), new LocalRect(0, 2, 2, 5, 0)), 0.5, 0.5);
+        for (double x = -0.6; x < 6.6; x += 0.0731) {
+            for (double z = -0.6; z < 7.6; z += 0.0689) {
+                double viaHelper = fadeAt(mesh, x, z);
+                double viaRect = Double.NaN;
+                for (ShadowRect r : mesh) {
+                    double f = r.fadeAt(x, z);
+                    if (!Double.isNaN(f)) {
+                        viaRect = f;
+                        break;
+                    }
+                }
+                if (Double.isNaN(viaHelper)) {
+                    assertTrue(Double.isNaN(viaRect), "at (" + x + ", " + z + ")");
+                } else {
+                    assertEquals(viaHelper, viaRect, 1e-9, "at (" + x + ", " + z + ")");
+                }
+            }
+        }
+    }
+
+    @Test
     void noSoftnessIsTheHardEdge() {
         List<LocalRect> input = List.of(new LocalRect(0, 0, 3, 7, 0), new LocalRect(3, 0, 2, 2, 1));
         assertEquals(Footprint.expand(input, 0.5), Footprint.soft(input, 0.5, 0));

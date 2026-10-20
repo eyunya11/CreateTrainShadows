@@ -8,6 +8,7 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.simibubi.create.content.contraptions.Contraption;
+import com.simibubi.create.content.trains.entity.Carriage;
 import com.simibubi.create.content.trains.entity.CarriageContraptionEntity;
 import com.simibubi.create.content.trains.entity.CarriageContraptionEntityRenderer;
 
@@ -44,6 +45,7 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
     private final ShadowDrawer drawer = new ShadowDrawer();
     private final LevelGround ground = new LevelGround();
     private final LevelWalls walls = new LevelWalls();
+    private final CurvedTrackShadows curves = new CurvedTrackShadows();
     private boolean loggedFirstRender;
     private boolean loggedFirstShadow;
 
@@ -121,9 +123,16 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
 
         VertexConsumer consumer = buffers.getBuffer(SHADOW_LAYER);
         drawer.begin(consumer, ms.last(), x, y, z);
-        projector.project(footprint, localToWorld, params, distanceFactor, ground.use(level), drawer);
+        projector.project(footprint, localToWorld, params, distanceFactor, ground.use(level, params.tracks()), drawer);
         sideProjector.project(footprints.walls(), footprints.topY(), localToWorld, params, distanceFactor,
             walls.use(level), drawer);
+        if (params.tracks()) {
+            Carriage carriage = entity.getCarriage();
+            if (carriage != null) {
+                curves.draw(carriage, footprints.extent(), footprint, localToWorld, params, distanceFactor, level,
+                    drawer);
+            }
+        }
         Diagnostics.drawn(drawer.polygonCount(), Math.sqrt(distanceSq));
         return Outcome.DRAWN;
     }

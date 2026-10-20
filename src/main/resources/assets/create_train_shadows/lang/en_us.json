@@ -17,5 +17,7 @@
   "create_train_shadows.configuration.sideReach": "Wall shadow reach",
   "create_train_shadows.configuration.sideReach.tooltip": "How far from a train, in blocks, the sides of walls (tunnel walls, platform edges, steps in the ground) are darkened. The wall is darkest next to the train and fades out with distance. 0 draws no shadow on walls.",
   "create_train_shadows.configuration.sideOpacity": "Wall shadow darkness",
-  "create_train_shadows.configuration.sideOpacity.tooltip": "How dark a wall gets right next to the train, in full light."
+  "create_train_shadows.configuration.sideOpacity.tooltip": "How dark a wall gets right next to the train, in full light.",
+  "create_train_shadows.configuration.trackShadows": "Shadows on Create track",
+  "create_train_shadows.configuration.trackShadows.tooltip": "Lay the shadow on the rails of Create's track, including sloping and curved track, instead of on the ground under the track. The rails stand higher than the plate of the track block, so without this they stay bright inside the shadow."
 }

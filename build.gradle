@@ -117,6 +117,10 @@ dependencies {
     compileOnly "dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}"
     // Create's entity types are Registrate entries, and javac needs the class to resolve AllEntityTypes
     compileOnly "com.tterrag.registrate:Registrate:${registrate_version}"
+    // Create's train classes use Catnip's Couple, which lives in the Ponder jar. Only that jar is needed to compile.
+    compileOnly("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}") {
+        transitive = false
+    }
 
     // Create's jar already bundles Registrate, Flywheel and Ponder (jar-in-jar), so a non-transitive
     // runtime dependency runs exactly the versions that Create release ships with. The published POMs

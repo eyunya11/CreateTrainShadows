@@ -19,8 +19,10 @@ final class FootprintCache {
      * @param ground the shadow on the ground: grown by the margin, with a soft edge
      * @param walls  the footprint itself, which is what walls are measured from
      * @param topY   the local height of the top of the highest block
+     * @param extent the length of the diagonal of the box around the shadow, in blocks: no point of the shadow is
+     *               further than this from any other
      */
-    record Footprints(List<ShadowRect> ground, List<ShadowRect> walls, double topY) {
+    record Footprints(List<ShadowRect> ground, List<ShadowRect> walls, double topY, double extent) {
     }
 
     private record Entry(int blockCount, double margin, double softness, Footprints footprints) {
@@ -59,7 +61,15 @@ final class FootprintCache {
             top = Math.max(top, pos.getY() + 1);
         }
         List<LocalRect> rects = footprint.build();
-        return new Footprints(Footprint.soft(rects, params.margin(), params.softness()),
-            Footprint.expand(rects, 0), top);
+        List<ShadowRect> ground = Footprint.soft(rects, params.margin(), params.softness());
+        double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, minZ = Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
+        for (ShadowRect rect : ground) {
+            minX = Math.min(minX, rect.minX());
+            maxX = Math.max(maxX, rect.maxX());
+            minZ = Math.min(minZ, rect.minZ());
+            maxZ = Math.max(maxZ, rect.maxZ());
+        }
+        double extent = ground.isEmpty() ? 0 : Math.hypot(maxX - minX, maxZ - minZ);
+        return new Footprints(ground, Footprint.expand(rects, 0), top, extent);
     }
 }

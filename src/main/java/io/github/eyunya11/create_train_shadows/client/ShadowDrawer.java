@@ -38,7 +38,7 @@ final class ShadowDrawer implements ShadowProjector.Sink, SideShadowProjector.Si
     // The render type draws only the front of a polygon, so the vertices must run the right way round.
 
     @Override
-    public void polygon(double[] xs, double[] zs, float[] alphas, int n, double y) {
+    public void polygon(double[] xs, double[] ys, double[] zs, float[] alphas, int n) {
         polygonCount++;
         boolean reverse = Winding.needsReversingToFaceUp(xs, zs, n);
         // The render type draws quads
@@ -46,7 +46,7 @@ final class ShadowDrawer implements ShadowProjector.Sink, SideShadowProjector.Si
             for (int corner = 0; corner < 4; corner++) {
                 int k = QuadFan.index(n, quad, corner);
                 int i = reverse ? n - 1 - k : k;
-                vertex(xs[i], y, zs[i], alphas[i], 0.0F, 1.0F, 0.0F);
+                vertex(xs[i], ys[i], zs[i], alphas[i], 0.0F, 1.0F, 0.0F);
             }
         }
     }

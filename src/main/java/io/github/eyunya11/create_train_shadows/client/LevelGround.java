@@ -1,13 +1,17 @@
 package io.github.eyunya11.create_train_shadows.client;
 
+import com.simibubi.create.content.trains.track.TrackBlock;
+
 import io.github.eyunya11.create_train_shadows.core.ShadowOpacity;
 import io.github.eyunya11.create_train_shadows.core.ShadowProjector;
+import io.github.eyunya11.create_train_shadows.core.TrackSurface;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
@@ -16,8 +20,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  *
  * <p>Create's track is not a full block. Its collision shape is a 2/16 high plate over the whole cell, so by
  * the vanilla rule a shadow would be drawn on the block under the track, inside the track's own model, and
- * would show only beside it. Unless {@code -Dcreate_train_shadows.vanillaReceiver=true} is set, plates like
- * that (one box covering the whole cell) also receive the shadow, at the top of the plate.
+ * would show only beside it; and the rails stand higher than that plate, so they would stay bright. When the
+ * track setting is on, a piece of Create's track takes the shadow at the top of its rails instead, tilted on a
+ * slope (which has no collision at all). Unless {@code -Dcreate_train_shadows.vanillaReceiver=true} is set,
+ * other plates (one box covering the whole cell) also receive the shadow, at the top of the plate.
  */
 final class LevelGround implements ShadowProjector.Ground {
     private static final boolean VANILLA_RECEIVER = Boolean.getBoolean("create_train_shadows.vanillaReceiver");
@@ -25,10 +31,14 @@ final class LevelGround implements ShadowProjector.Ground {
 
     private final BlockPos.MutableBlockPos receiver = new BlockPos.MutableBlockPos();
     private final BlockPos.MutableBlockPos above = new BlockPos.MutableBlockPos();
+    private final double[] trackPlane = new double[3];
     private Level level;
+    private boolean tracks;
 
-    LevelGround use(Level level) {
+    /** @param tracks whether Create's track takes the shadow on the top of its rails, slopes included */
+    LevelGround use(Level level, boolean tracks) {
         this.level = level;
+        this.tracks = tracks;
         return this;
     }
 
@@ -42,9 +52,17 @@ final class LevelGround implements ShadowProjector.Ground {
             if (state.getRenderShape() == RenderShape.INVISIBLE) {
                 continue;
             }
-            double top = receivingTop(state);
-            if (Double.isNaN(top)) {
-                continue;
+            double top;
+            double slopeX = 0, slopeZ = 0;
+            if (tracks && onTrackSurface(state)) {
+                top = trackPlane[0];
+                slopeX = trackPlane[1];
+                slopeZ = trackPlane[2];
+            } else {
+                top = receivingTop(state);
+                if (Double.isNaN(top)) {
+                    continue;
+                }
             }
             above.set(cellX, y, cellZ);
             int light = level.getMaxLocalRawBrightness(above);
@@ -53,9 +71,25 @@ final class LevelGround implements ShadowProjector.Ground {
             }
             out[0] = (y - 1) + top;
             out[1] = LightTexture.getBrightness(level.dimensionType(), light);
+            out[2] = slopeX;
+            out[3] = slopeZ;
             return true;
         }
         return false;
+    }
+
+    /**
+     * Whether the block is a piece of Create's track, and if so, the plane of the top of its rails in
+     * {@link #trackPlane}. Track is not a full block and a slope has no collision at all, so neither the
+     * rules for full blocks nor those for plates would put the shadow where the rails are.
+     */
+    private boolean onTrackSurface(BlockState state) {
+        if (!(state.getBlock() instanceof TrackBlock track) || !state.hasProperty(TrackBlock.SHAPE)) {
+            return false;
+        }
+        Vec3 normal = state.getValue(TrackBlock.SHAPE).getNormal();
+        return TrackSurface.plane(normal.x, normal.y, normal.z, track.getElevationAtCenter(level, receiver, state),
+            trackPlane);
     }
 
     /** Height of the receiving surface inside its block, or NaN when this block can't receive a shadow. */

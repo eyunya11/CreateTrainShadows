@@ -35,7 +35,9 @@ public final class ShadowProjector {
          * Finds the surface that receives a shadow in the world cell (cellX, cellZ), looking from the block
          * row {@code startY} downwards for at most {@code depth} rows.
          *
-         * @param out receives [surface height, light brightness 0..1] when a surface is found
+         * @param out receives, when a surface is found: [0] the height of the surface at the middle of the
+         *            cell, [1] the light brightness 0..1, [2] and [3] how much the height changes per block
+         *            towards +x and +z (both 0 on a level surface; the caller clears them before asking)
          * @return whether a surface that can receive a shadow was found
          */
         boolean sample(int cellX, int cellZ, int startY, int depth, double[] out);
@@ -43,10 +45,10 @@ public final class ShadowProjector {
 
     public interface Sink {
         /**
-         * A convex polygon with vertices (xs[i], y, zs[i]) for i in [0, n), lying flat at height y, with an
-         * alpha for each vertex that is to be interpolated across it.
+         * A convex polygon with vertices (xs[i], ys[i], zs[i]) for i in [0, n), with an alpha for each vertex
+         * that is to be interpolated across it. It is flat on level ground and tilted on a slope.
          */
-        void polygon(double[] xs, double[] zs, float[] alphas, int n, double y);
+        void polygon(double[] xs, double[] ys, double[] zs, float[] alphas, int n);
     }
 
     private final double[] sourceU = new double[4];
@@ -57,8 +59,9 @@ public final class ShadowProjector {
     private final double[] bufAZ = new double[16];
     private final double[] bufBX = new double[16];
     private final double[] bufBZ = new double[16];
+    private final double[] heights = new double[16];
     private final float[] alphas = new float[16];
-    private final double[] hit = new double[2];
+    private final double[] hit = new double[4];
 
     // The current rectangle, shared by the helpers below
     private double c00x, c00y, c00z, eUx, eUy, eUz, eVx, eVy, eVz, det;
@@ -180,10 +183,15 @@ public final class ShadowProjector {
                 double undersideY = c00y + u(centreX, centreZ) * eUy + v(centreX, centreZ) * eVy;
 
                 int startY = (int) Math.floor(undersideY + 1.0e-6);
+                hit[2] = 0;
+                hit[3] = 0;
                 if (!ground.sample(cellX, cellZ, startY, depth, hit)) {
                     continue;
                 }
-                double height = undersideY - hit[0] - standoff;
+                // The surface may be tilted (a sloping track): its height at a point of the cell
+                double middleX = cellX + 0.5, middleZ = cellZ + 0.5;
+                double surfaceHere = hit[0] + hit[2] * (centreX - middleX) + hit[3] * (centreZ - middleZ);
+                double height = undersideY - surfaceHere - standoff;
                 double base = ShadowOpacity.alpha(params, height, hit[1]) * distanceFactor;
                 if (base <= 0) {
                     continue;
@@ -192,8 +200,9 @@ public final class ShadowProjector {
                 for (int i = 0; i < n; i++) {
                     double fade = fade0 + fadeU * u(bufAX[i], bufAZ[i]) + fadeV * v(bufAX[i], bufAZ[i]);
                     alphas[i] = (float) (base * Math.max(0.0, Math.min(1.0, fade)));
+                    heights[i] = hit[0] + hit[2] * (bufAX[i] - middleX) + hit[3] * (bufAZ[i] - middleZ) + LIFT;
                 }
-                sink.polygon(bufAX, bufAZ, alphas, n, hit[0] + LIFT);
+                sink.polygon(bufAX, heights, bufAZ, alphas, n);
             }
         }
     }

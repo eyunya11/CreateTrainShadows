@@ -67,6 +67,13 @@ public final class Config {
         .translation("create_train_shadows.configuration.sideOpacity")
         .defineInRange("sideOpacity", DEFAULTS.sideOpacity(), 0.0, 1.0);
 
+    private static final ModConfigSpec.BooleanValue TRACKS = BUILDER
+        .comment("Lay the shadow on the rails of Create's track, including sloping and curved track, instead of on",
+            "the ground under the track. The rails stand higher than the plate of the track block, so without this",
+            "they stay bright inside the shadow.")
+        .translation("create_train_shadows.configuration.trackShadows")
+        .define("trackShadows", DEFAULTS.tracks());
+
     static final ModConfigSpec SPEC = BUILDER.build();
 
     private static volatile boolean enabled = true;
@@ -90,6 +97,6 @@ public final class Config {
         }
         enabled = ENABLED.get();
         params = new ShadowParams(OPACITY.get(), FADE_DISTANCE.get(), FADE_HEIGHT.get(), GRACE_HEIGHT.get(),
-            MARGIN.get(), SOFTNESS.get(), SIDE_REACH.get(), SIDE_OPACITY.get());
+            MARGIN.get(), SOFTNESS.get(), SIDE_REACH.get(), SIDE_OPACITY.get(), TRACKS.get());
     }
 }

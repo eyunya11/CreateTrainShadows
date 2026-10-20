@@ -29,6 +29,23 @@ public record ShadowRect(double minX, double minZ, double maxX, double maxZ, int
         return a00 == a10 && a10 == a01 && a01 == a11;
     }
 
+    /**
+     * The darkness factor at a point of the rectangle, as it is drawn: interpolated within the triangle of the
+     * split that contains the point. NaN when the point is outside the rectangle.
+     */
+    public double fadeAt(double x, double z) {
+        final double slack = 1.0e-9;
+        if (x < minX - slack || x > maxX + slack || z < minZ - slack || z > maxZ + slack) {
+            return Double.NaN;
+        }
+        double u = (x - minX) / (maxX - minX);
+        double v = (z - minZ) / (maxZ - minZ);
+        if (splitsAlongMinToMax) {
+            return u >= v ? a00 + u * (a10 - a00) + v * (a11 - a10) : a00 + u * (a11 - a01) + v * (a01 - a00);
+        }
+        return u + v <= 1 ? a00 + u * (a10 - a00) + v * (a01 - a00) : a01 + a10 - a11 + u * (a11 - a01) + v * (a11 - a10);
+    }
+
     public double area() {
         return (maxX - minX) * (maxZ - minZ);
     }

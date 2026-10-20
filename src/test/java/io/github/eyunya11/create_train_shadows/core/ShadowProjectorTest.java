@@ -11,7 +11,11 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ShadowProjectorTest {
-    private record Piece(double[] xs, double[] zs, float[] alphas, int n, double y) {
+    private record Piece(double[] xs, double[] ys, double[] zs, float[] alphas, int n) {
+        double y() {
+            return ys[0];
+        }
+
         /** The alpha of a piece that is equally dark everywhere. */
         float alpha() {
             for (int i = 1; i < n; i++) {
@@ -63,7 +67,7 @@ class ShadowProjectorTest {
         ShadowProjector.Ground ground) {
         List<Piece> pieces = new ArrayList<>();
         new ShadowProjector().project(rects, m, params, distanceFactor, ground,
-            (xs, zs, alphas, n, y) -> pieces.add(new Piece(xs.clone(), zs.clone(), alphas.clone(), n, y)));
+            (xs, ys, zs, alphas, n) -> pieces.add(new Piece(xs.clone(), ys.clone(), zs.clone(), alphas.clone(), n)));
         return pieces;
     }
 
@@ -238,6 +242,70 @@ class ShadowProjectorTest {
             assertEquals(0.3f, p.alpha(), 1e-6f); // 5 blocks up: 4 beyond the grace height, half of the fade
         }
         assertTrue(run(CARRIAGE, Mat3x4.translation(0, 13.0, 0), DEFAULT, FLAT_GROUND_AT_4).isEmpty());
+    }
+
+    // --- tilted surfaces (a sloping track): the height of every vertex follows the slope of its cell
+
+    private static final ShadowProjector.Ground SLOPE_TOWARDS_PLUS_Z = (cx, cz, startY, depth, out) -> {
+        out[0] = 4.0 + 0.5 * (cz + 0.5 - 20); // height at the middle of the cell on the plane 4 + 0.5 * (z - 20)
+        out[1] = 1.0;
+        out[2] = 0.0;
+        out[3] = 0.5;
+        return true;
+    };
+
+    @Test
+    void aTiltedSurfaceGivesTiltedPolygons() {
+        // 3 blocks above the low end of the slope and 1 above its high end, within the default fade
+        List<Piece> pieces = run(List.of(rect(3, 20, 2, 4, 0)), Mat3x4.translation(0, 7, 0), DEFAULT,
+            SLOPE_TOWARDS_PLUS_Z);
+        assertFalse(pieces.isEmpty());
+        for (Piece p : pieces) {
+            for (int i = 0; i < p.n(); i++) {
+                assertEquals(4.0 + 0.5 * (p.zs()[i] - 20) + ShadowProjector.LIFT, p.ys()[i], 1e-9,
+                    "vertex at z=" + p.zs()[i]);
+            }
+        }
+        assertEquals(8.0, totalArea(pieces), 1e-9);
+    }
+
+    @Test
+    void theHeightAboveATiltedSurfaceIsMeasuredAtTheMiddleOfEachPiece() {
+        // the underside is level at y = 6; the surface climbs half a block per block, so higher up it is closer
+        List<Piece> pieces = run(List.of(rect(3, 20, 1, 4, 0)), Mat3x4.translation(0, 6, 0), VANILLA,
+            SLOPE_TOWARDS_PLUS_Z);
+        pieces.sort(Comparator.comparingDouble(Piece::centreZ));
+        assertEquals(4, pieces.size());
+        for (int i = 0; i + 1 < pieces.size(); i++) {
+            assertTrue(pieces.get(i + 1).alpha() > pieces.get(i).alpha(), "closer ground is darker");
+        }
+        Piece first = pieces.get(0);
+        double height = 6 - (4.0 + 0.5 * (first.centreZ() - 20));
+        assertEquals((1.0 - height / 2) * 0.5, first.alpha(), 1e-6);
+    }
+
+    @Test
+    void aLevelSurfaceDoesNotInheritASlopeFromTheLastCell() {
+        // the second and third values are cleared before each question, so a ground that does not set them is level
+        ShadowProjector.Ground staleSlope = new ShadowProjector.Ground() {
+            private boolean first = true;
+
+            @Override
+            public boolean sample(int cx, int cz, int startY, int depth, double[] out) {
+                out[0] = 4.0;
+                out[1] = 1.0;
+                if (first) {
+                    out[2] = 5.0;
+                    out[3] = 5.0;
+                    first = false;
+                } else {
+                    assertEquals(0.0, out[2]);
+                    assertEquals(0.0, out[3]);
+                }
+                return true;
+            }
+        };
+        run(List.of(rect(0, 0, 3, 3, 0)), Mat3x4.translation(0, 5, 0), VANILLA, staleSlope);
     }
 
     @Test
