@@ -12,6 +12,7 @@ import com.simibubi.create.content.trains.track.BezierConnection;
 import io.github.eyunya11.create_train_shadows.Create_train_shadows;
 import io.github.eyunya11.create_train_shadows.core.Mat3x4;
 import io.github.eyunya11.create_train_shadows.core.ShadowOpacity;
+import io.github.eyunya11.create_train_shadows.core.ShadowField;
 import io.github.eyunya11.create_train_shadows.core.ShadowParams;
 import io.github.eyunya11.create_train_shadows.core.ShadowProjector;
 import io.github.eyunya11.create_train_shadows.core.ShadowRect;
@@ -44,13 +45,8 @@ final class CurvedTrackShadows implements TrackRibbon.Surface {
     private boolean broken;
 
     // The frame being drawn
+    private final ShadowField field = new ShadowField();
     private Level level;
-    private ShadowParams params;
-    private double distanceFactor;
-    private List<ShadowRect> mesh;
-    private Mat3x4 localToWorld;
-    private Mat3x4 worldToLocal;
-    private int lowestBottom;
 
     /**
      * @param reach how far along the track from its wheels the carriage's shadow can reach, in blocks
@@ -73,15 +69,7 @@ final class CurvedTrackShadows implements TrackRibbon.Surface {
             }
 
             this.level = level;
-            this.params = params;
-            this.distanceFactor = distanceFactor;
-            this.mesh = mesh;
-            this.localToWorld = localToWorld;
-            this.worldToLocal = localToWorld.inverse();
-            this.lowestBottom = Integer.MAX_VALUE;
-            for (ShadowRect rect : mesh) {
-                lowestBottom = Math.min(lowestBottom, rect.bottomY());
-            }
+            field.set(mesh, localToWorld, params, distanceFactor);
 
             for (Map.Entry<BezierConnection, double[]> entry : ranges.entrySet()) {
                 drawCurve(entry.getKey(), entry.getValue(), sink);
@@ -92,7 +80,6 @@ final class CurvedTrackShadows implements TrackRibbon.Surface {
             Create_train_shadows.LOGGER.error("Shadows on curved track failed and are switched off: {}", e.toString(), e);
         } finally {
             this.level = null;
-            this.mesh = null;
         }
     }
 
@@ -141,25 +128,15 @@ final class CurvedTrackShadows implements TrackRibbon.Surface {
     /** The darkness of the carriage's shadow at a point of the rails: what the ground would get there. */
     @Override
     public double alphaAt(double x, double y, double z) {
-        double localX = worldToLocal.x(x, y, z);
-        double localZ = worldToLocal.z(x, y, z);
-        for (ShadowRect rect : mesh) {
-            double fade = rect.fadeAt(localX, localZ);
-            if (Double.isNaN(fade)) {
-                continue;
-            }
-            double underside = localToWorld.y(localX, rect.bottomY(), localZ);
-            double height = underside - y - (rect.bottomY() - lowestBottom);
-
-            pos.set(Mth.floor(x), Mth.floor(y) + 1, Mth.floor(z));
-            int light = level.getMaxLocalRawBrightness(pos);
-            if (light < ShadowOpacity.MIN_LIGHT) {
-                return 0;
-            }
-            double brightness = LightTexture.getBrightness(level.dimensionType(), light);
-            return ShadowOpacity.alpha(params, height, brightness) * distanceFactor * Math.max(0.0, fade);
+        if (!field.isNear(x, y, z, 0.5)) {
+            return 0;
         }
-        return 0;
+        pos.set(Mth.floor(x), Mth.floor(y) + 1, Mth.floor(z));
+        int light = level.getMaxLocalRawBrightness(pos);
+        if (light < ShadowOpacity.MIN_LIGHT) {
+            return 0;
+        }
+        return field.alphaAt(x, y, z, LightTexture.getBrightness(level.dimensionType(), light));
     }
 
     private void grow(int n) {

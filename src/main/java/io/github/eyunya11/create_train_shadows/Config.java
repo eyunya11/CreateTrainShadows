@@ -1,6 +1,7 @@
 package io.github.eyunya11.create_train_shadows;
 
 import io.github.eyunya11.create_train_shadows.core.ShadowParams;
+import io.github.eyunya11.create_train_shadows.core.TrackMode;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -67,12 +68,14 @@ public final class Config {
         .translation("create_train_shadows.configuration.sideOpacity")
         .defineInRange("sideOpacity", DEFAULTS.sideOpacity(), 0.0, 1.0);
 
-    private static final ModConfigSpec.BooleanValue TRACKS = BUILDER
-        .comment("Lay the shadow on the rails of Create's track, including sloping and curved track, instead of on",
-            "the ground under the track. The rails stand higher than the plate of the track block, so without this",
-            "they stay bright inside the shadow.")
-        .translation("create_train_shadows.configuration.trackShadows")
-        .define("trackShadows", DEFAULTS.tracks());
+    private static final ModConfigSpec.EnumValue<TrackMode> TRACKS = BUILDER
+        .comment("How the shadow is put on Create's track, sloping and curved track included. The rails and sleepers",
+            "stand higher than the plate of the track block, so without help they stay bright inside the shadow.",
+            "MODEL draws the faces of the track's own model again, black and translucent, so the shadow follows",
+            "the rails and sleepers exactly. PLATE lays a translucent plate at the height of the rails instead,",
+            "which is cheaper. OFF does neither.")
+        .translation("create_train_shadows.configuration.trackShadowMode")
+        .defineEnum("trackShadowMode", DEFAULTS.tracks());
 
     static final ModConfigSpec SPEC = BUILDER.build();
 

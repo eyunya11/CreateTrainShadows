@@ -21,6 +21,7 @@ import io.github.eyunya11.create_train_shadows.core.ShadowParams;
 import io.github.eyunya11.create_train_shadows.core.ShadowProjector;
 import io.github.eyunya11.create_train_shadows.core.ShadowRect;
 import io.github.eyunya11.create_train_shadows.core.SideShadowProjector;
+import io.github.eyunya11.create_train_shadows.core.TrackMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -46,6 +47,7 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
     private final LevelGround ground = new LevelGround();
     private final LevelWalls walls = new LevelWalls();
     private final CurvedTrackShadows curves = new CurvedTrackShadows();
+    private final TrackModelShadows trackModels = new TrackModelShadows();
     private boolean loggedFirstRender;
     private boolean loggedFirstShadow;
 
@@ -123,14 +125,18 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
 
         VertexConsumer consumer = buffers.getBuffer(SHADOW_LAYER);
         drawer.begin(consumer, ms.last(), x, y, z);
-        projector.project(footprint, localToWorld, params, distanceFactor, ground.use(level, params.tracks()), drawer);
+        TrackMode tracks = params.tracks();
+        projector.project(footprint, localToWorld, params, distanceFactor,
+            ground.use(level, tracks == TrackMode.PLATE), drawer);
         sideProjector.project(footprints.walls(), footprints.topY(), localToWorld, params, distanceFactor,
             walls.use(level), drawer);
-        if (params.tracks()) {
-            Carriage carriage = entity.getCarriage();
-            if (carriage != null) {
+        Carriage carriage = tracks == TrackMode.OFF ? null : entity.getCarriage();
+        if (carriage != null) {
+            if (tracks == TrackMode.PLATE) {
                 curves.draw(carriage, footprints.extent(), footprint, localToWorld, params, distanceFactor, level,
                     drawer);
+            } else {
+                trackModels.draw(level, carriage, footprints, localToWorld, params, distanceFactor, drawer);
             }
         }
         Diagnostics.drawn(drawer.polygonCount(), Math.sqrt(distanceSq));

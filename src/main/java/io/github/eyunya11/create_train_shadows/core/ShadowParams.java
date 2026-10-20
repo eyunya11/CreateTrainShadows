@@ -14,14 +14,14 @@ package io.github.eyunya11.create_train_shadows.core;
  * @param sideReach    how far from the body, in blocks, the side of a wall is still darkened; 0 draws no
  *                     shadow on walls (vanilla shadows only fall on the ground)
  * @param sideOpacity  alpha of the darkest part of a wall's shadow, right next to the body
- * @param tracks       whether the shadow lies on the rails of Create's track (sloping ones and curves too),
- *                     instead of on whatever is under the track
+ * @param tracks       how the shadow is put on Create's track (sloping ones and curves too): not at all, as a
+ *                     plate at the height of the rails, or on the faces of the track model itself
  */
 public record ShadowParams(double opacity, double fadeDistance, double fadeHeight, double graceHeight,
-    double margin, double softness, double sideReach, double sideOpacity, boolean tracks) {
+    double margin, double softness, double sideReach, double sideOpacity, TrackMode tracks) {
     /** What the vanilla entity shadow does, for comparison and for tests. */
-    public static final ShadowParams VANILLA = new ShadowParams(0.5, 16.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, false);
+    public static final ShadowParams VANILLA = new ShadowParams(0.5, 16.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, TrackMode.OFF);
 
     /** The defaults of the mod's configuration. */
-    public static final ShadowParams DEFAULT = new ShadowParams(0.6, 128.0, 8.0, 1.0, 0.5, 0.5, 2.0, 0.5, true);
+    public static final ShadowParams DEFAULT = new ShadowParams(0.6, 128.0, 8.0, 1.0, 0.5, 0.5, 2.0, 0.5, TrackMode.MODEL);
 }

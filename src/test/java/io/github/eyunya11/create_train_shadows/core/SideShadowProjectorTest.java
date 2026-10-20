@@ -229,9 +229,9 @@ class SideShadowProjectorTest {
         SideShadowProjector.Walls forbidden = (cx, y, cz, out) -> {
             throw new AssertionError("walls must not be queried");
         };
-        ShadowParams off = new ShadowParams(0.6, 128, 8, 1, 0.5, 0.5, 0, 0.5, true);
+        ShadowParams off = new ShadowParams(0.6, 128, 8, 1, 0.5, 0.5, 0, 0.5, TrackMode.OFF);
         assertTrue(run(BODY, PLACE, off, 1.0, forbidden).isEmpty());
-        ShadowParams invisible = new ShadowParams(0.6, 128, 8, 1, 0.5, 0.5, 2, 0, true);
+        ShadowParams invisible = new ShadowParams(0.6, 128, 8, 1, 0.5, 0.5, 2, 0, TrackMode.OFF);
         assertTrue(run(BODY, PLACE, invisible, 1.0, forbidden).isEmpty());
         assertTrue(run(BODY, PLACE, PARAMS, 0.0, forbidden).isEmpty());
     }

@@ -61,6 +61,17 @@ final class ShadowDrawer implements ShadowProjector.Sink, SideShadowProjector.Si
         }
     }
 
+    /**
+     * A quad of a model that is drawn again as a shadow. Its vertices are written in the order they have,
+     * because the model has them the right way round for its front.
+     */
+    void rawQuad(double[] xs, double[] ys, double[] zs, float[] alphas) {
+        polygonCount++;
+        for (int i = 0; i < 4; i++) {
+            vertex(xs[i], ys[i], zs[i], alphas[i], 0.0F, 1.0F, 0.0F);
+        }
+    }
+
     private void vertex(double x, double y, double z, float alpha, float normalX, float normalY, float normalZ) {
         consumer.addVertex(pose.pose(), (float) (x - originX), (float) (y - originY), (float) (z - originZ))
             .setColor(0.0F, 0.0F, 0.0F, alpha)
