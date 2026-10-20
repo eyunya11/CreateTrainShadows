@@ -33,9 +33,11 @@ import net.minecraft.world.level.Level;
  * Registered over Create's own renderer for the carriage contraption entity.
  */
 public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
-    // Plain white, tinted black per vertex: a flat shadow with hard edges, not the round blob of vanilla.
+    // Plain white, tinted black per vertex: a flat shadow, not the round blob of vanilla. The vanilla shadow
+    // render type: it pulls what it draws a little towards the camera, so a shadow can lie almost on the surface
+    // it falls on without z-fighting, and it culls back faces (ShadowDrawer writes the vertices to suit).
     private static final RenderType SHADOW_LAYER =
-        RenderType.entityNoOutline(ResourceLocation.withDefaultNamespace("textures/misc/white.png"));
+        RenderType.entityShadow(ResourceLocation.withDefaultNamespace("textures/misc/white.png"));
 
     private final ShadowProjector projector = new ShadowProjector();
     private final SideShadowProjector sideProjector = new SideShadowProjector();

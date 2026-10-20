@@ -19,8 +19,13 @@ import java.util.List;
  * the only user.
  */
 public final class ShadowProjector {
-    /** Vanilla lifts shadows this far above the receiving surface to avoid z-fighting. */
-    public static final double LIFT = 1.0 / 64.0;
+    /**
+     * How far a shadow is lifted off the surface it falls on. Vanilla lifts by 1/64 of a block, but at a convex
+     * edge two shadows (on a top and on a side face) then leave a gap of that width between them, which shows
+     * as a thin bright line along the edge. The shadow render type pulls the shadow towards the camera to
+     * avoid z-fighting, so a much smaller lift is enough.
+     */
+    public static final double LIFT = 1.0 / 512.0;
 
     private static final double MIN_AREA = 1.0e-4;
     private static final double MIN_DETERMINANT = 1.0e-9;

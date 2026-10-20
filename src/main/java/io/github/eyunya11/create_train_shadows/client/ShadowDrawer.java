@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import io.github.eyunya11.create_train_shadows.core.QuadFan;
 import io.github.eyunya11.create_train_shadows.core.ShadowProjector;
 import io.github.eyunya11.create_train_shadows.core.SideShadowProjector;
+import io.github.eyunya11.create_train_shadows.core.Winding;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 
@@ -34,13 +35,17 @@ final class ShadowDrawer implements ShadowProjector.Sink, SideShadowProjector.Si
         return polygonCount;
     }
 
+    // The render type draws only the front of a polygon, so the vertices must run the right way round.
+
     @Override
     public void polygon(double[] xs, double[] zs, float[] alphas, int n, double y) {
         polygonCount++;
+        boolean reverse = Winding.needsReversingToFaceUp(xs, zs, n);
         // The render type draws quads
         for (int quad = 0; quad < QuadFan.quadCount(n); quad++) {
             for (int corner = 0; corner < 4; corner++) {
-                int i = QuadFan.index(n, quad, corner);
+                int k = QuadFan.index(n, quad, corner);
+                int i = reverse ? n - 1 - k : k;
                 vertex(xs[i], y, zs[i], alphas[i], 0.0F, 1.0F, 0.0F);
             }
         }
@@ -49,7 +54,9 @@ final class ShadowDrawer implements ShadowProjector.Sink, SideShadowProjector.Si
     @Override
     public void quad(double[] xs, double[] ys, double[] zs, float[] alphas, int normalX, int normalZ) {
         polygonCount++;
-        for (int i = 0; i < 4; i++) {
+        boolean reverse = Winding.needsReversingToFace(xs, ys, zs, normalX, normalZ);
+        for (int k = 0; k < 4; k++) {
+            int i = reverse ? 3 - k : k;
             vertex(xs[i], ys[i], zs[i], alphas[i], normalX, 0.0F, normalZ);
         }
     }
