@@ -48,6 +48,13 @@ public final class Config {
         .translation("create_train_shadows.configuration.margin")
         .defineInRange("margin", DEFAULTS.margin(), 0.0, 2.0);
 
+    private static final ModConfigSpec.DoubleValue SOFTNESS = BUILDER
+        .comment("Width of the band along the outer edge of the shadow in which it fades from nothing to full darkness,",
+            "in blocks. 0 gives a hard edge. With a width equal to the spread, the shadow is darkest at the outline of",
+            "the train and fades out to its outer edge.")
+        .translation("create_train_shadows.configuration.softness")
+        .defineInRange("softness", DEFAULTS.softness(), 0.0, 2.0);
+
     static final ModConfigSpec SPEC = BUILDER.build();
 
     private static volatile boolean enabled = true;
@@ -70,6 +77,7 @@ public final class Config {
             return;
         }
         enabled = ENABLED.get();
-        params = new ShadowParams(OPACITY.get(), FADE_DISTANCE.get(), FADE_HEIGHT.get(), GRACE_HEIGHT.get(), MARGIN.get());
+        params = new ShadowParams(OPACITY.get(), FADE_DISTANCE.get(), FADE_HEIGHT.get(), GRACE_HEIGHT.get(),
+            MARGIN.get(), SOFTNESS.get());
     }
 }

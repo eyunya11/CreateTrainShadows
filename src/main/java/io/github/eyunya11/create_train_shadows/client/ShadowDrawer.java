@@ -33,13 +33,13 @@ final class ShadowDrawer implements ShadowProjector.Sink {
     }
 
     @Override
-    public void polygon(double[] xs, double[] zs, int n, double y, float alpha) {
+    public void polygon(double[] xs, double[] zs, float[] alphas, int n, double y) {
         polygonCount++;
         // The render type draws quads
         for (int quad = 0; quad < QuadFan.quadCount(n); quad++) {
             for (int corner = 0; corner < 4; corner++) {
                 int i = QuadFan.index(n, quad, corner);
-                vertex(xs[i], y, zs[i], alpha);
+                vertex(xs[i], y, zs[i], alphas[i]);
             }
         }
     }

@@ -46,6 +46,12 @@ neoForge {
             if (project.hasProperty('vanilla_receiver')) {
                 systemProperty 'create_train_shadows.vanillaReceiver', project.property('vanilla_receiver')
             }
+
+            // ./gradlew runClient -Pgame_dir=build/run-check  ->  run in another folder than ./run, so that a
+            // second game (an automated check, say) never shares config, logs or worlds with the one being played
+            if (project.hasProperty('game_dir')) {
+                gameDirectory = project.file(project.property('game_dir'))
+            }
         }
 
         server {

@@ -9,12 +9,13 @@ import com.simibubi.create.content.trains.entity.CarriageContraption;
 
 import io.github.eyunya11.create_train_shadows.core.Footprint;
 import io.github.eyunya11.create_train_shadows.core.LocalRect;
+import io.github.eyunya11.create_train_shadows.core.ShadowParams;
 import io.github.eyunya11.create_train_shadows.core.ShadowRect;
 import net.minecraft.core.BlockPos;
 
-/** Shadow footprints of contraptions, rebuilt only when the set of blocks or the margin changes. */
+/** Shadow footprints of contraptions, rebuilt only when the set of blocks or the shape settings change. */
 final class FootprintCache {
-    private record Entry(int blockCount, double margin, List<ShadowRect> rects) {
+    private record Entry(int blockCount, double margin, double softness, List<ShadowRect> rects) {
     }
 
     // Weak keys: a contraption that is disassembled or unloaded takes its footprint with it.
@@ -23,16 +24,20 @@ final class FootprintCache {
     private FootprintCache() {
     }
 
-    static List<ShadowRect> get(Contraption contraption, double margin) {
+    static List<ShadowRect> get(Contraption contraption, ShadowParams params) {
+        double margin = params.margin();
+        double softness = params.softness();
+
         // While a carriage is crossing a portal, parts of it are hidden and that changes every frame.
         if (contraption instanceof CarriageContraption carriage && !carriage.notInPortal()) {
-            return Footprint.expand(build(contraption, true), margin);
+            return Footprint.soft(build(contraption, true), margin, softness);
         }
 
         int blockCount = contraption.getBlocks().size();
         Entry cached = CACHE.get(contraption);
-        if (cached == null || cached.blockCount() != blockCount || cached.margin() != margin) {
-            cached = new Entry(blockCount, margin, Footprint.expand(build(contraption, false), margin));
+        if (cached == null || cached.blockCount() != blockCount || cached.margin() != margin
+            || cached.softness() != softness) {
+            cached = new Entry(blockCount, margin, softness, Footprint.soft(build(contraption, false), margin, softness));
             CACHE.put(contraption, cached);
         }
         return cached.rects();

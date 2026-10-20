@@ -11,5 +11,7 @@
   "create_train_shadows.configuration.graceHeight": "Grace height",
   "create_train_shadows.configuration.graceHeight.tooltip": "Height above the lowest part of the train that still counts as touching the ground. Create hangs a train one block above its track.",
   "create_train_shadows.configuration.margin": "Shadow spread",
-  "create_train_shadows.configuration.margin.tooltip": "How far the shadow reaches past the outline of the train on every side, in blocks."
+  "create_train_shadows.configuration.margin.tooltip": "How far the shadow reaches past the outline of the train on every side, in blocks.",
+  "create_train_shadows.configuration.softness": "Edge softness",
+  "create_train_shadows.configuration.softness.tooltip": "Width of the band along the outer edge of the shadow in which it fades from nothing to full darkness, in blocks. 0 gives a hard edge."
 }

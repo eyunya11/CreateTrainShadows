@@ -94,7 +94,7 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
         if (distanceFactor <= 0) {
             return Outcome.TOO_FAR;
         }
-        List<ShadowRect> footprint = FootprintCache.get(contraption, params.margin());
+        List<ShadowRect> footprint = FootprintCache.get(contraption, params);
         if (footprint.isEmpty()) {
             return Outcome.NO_FOOTPRINT;
         }

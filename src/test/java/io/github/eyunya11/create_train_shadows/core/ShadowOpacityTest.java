@@ -46,7 +46,7 @@ class ShadowOpacityTest {
 
     @Test
     void alphaIsCappedAtOne() {
-        assertEquals(1.0f, ShadowOpacity.alpha(new ShadowParams(10, 16, 2, 0, 0), 0.0, 1.0), 1e-6f);
+        assertEquals(1.0f, ShadowOpacity.alpha(new ShadowParams(10, 16, 2, 0, 0, 0), 0.0, 1.0), 1e-6f);
     }
 
     @Test
@@ -80,6 +80,6 @@ class ShadowOpacityTest {
 
     @Test
     void searchDepthIsCapped() {
-        assertEquals(ShadowOpacity.MAX_DEPTH, ShadowOpacity.searchDepth(new ShadowParams(0.6, 128, 32, 8, 0), 100));
+        assertEquals(ShadowOpacity.MAX_DEPTH, ShadowOpacity.searchDepth(new ShadowParams(0.6, 128, 32, 8, 0, 0), 100));
     }
 }

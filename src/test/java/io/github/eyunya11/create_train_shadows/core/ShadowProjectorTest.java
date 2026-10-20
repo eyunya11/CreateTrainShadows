@@ -11,7 +11,15 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ShadowProjectorTest {
-    private record Piece(double[] xs, double[] zs, int n, double y, float alpha) {
+    private record Piece(double[] xs, double[] zs, float[] alphas, int n, double y) {
+        /** The alpha of a piece that is equally dark everywhere. */
+        float alpha() {
+            for (int i = 1; i < n; i++) {
+                assertEquals(alphas[0], alphas[i], 1e-6f, "alpha varies across the piece");
+            }
+            return alphas[0];
+        }
+
         double area() {
             double twice = 0;
             for (int i = 0; i < n; i++) {
@@ -55,7 +63,7 @@ class ShadowProjectorTest {
         ShadowProjector.Ground ground) {
         List<Piece> pieces = new ArrayList<>();
         new ShadowProjector().project(rects, m, params, distanceFactor, ground,
-            (xs, zs, n, y, alpha) -> pieces.add(new Piece(xs.clone(), zs.clone(), n, y, alpha)));
+            (xs, zs, alphas, n, y) -> pieces.add(new Piece(xs.clone(), zs.clone(), alphas.clone(), n, y)));
         return pieces;
     }
 
@@ -251,5 +259,95 @@ class ShadowProjectorTest {
         int upperDepth = ShadowOpacity.searchDepth(DEFAULT, 2);
         assertTrue(calls.stream().anyMatch(c -> c[1] == lowestDepth && c[0] == 5));
         assertTrue(calls.stream().anyMatch(c -> c[1] == upperDepth && c[0] == 7));
+    }
+
+    // --- soft edges: the rectangle's own fade is interpolated across it and multiplied into every vertex
+
+    private static final double BASE_ALPHA = 0.25; // VANILLA, one block above flat ground
+
+    @Test
+    void aFadeAcrossARectangleIsLinearAndMeetsTheCellBorders() {
+        // dark on the right, nothing on the left, over four cells
+        ShadowRect fade = new ShadowRect(0, 0, 4, 1, 0, 0.0, 1.0, 0.0, 1.0);
+        List<Piece> pieces = run(List.of(fade), Mat3x4.translation(0, 5, 0), VANILLA, FLAT_GROUND_AT_4);
+        assertEquals(4.0, totalArea(pieces), 1e-9);
+        for (Piece p : pieces) {
+            for (int i = 0; i < p.n(); i++) {
+                assertEquals(BASE_ALPHA * p.xs()[i] / 4.0, p.alphas()[i], 1e-6, "vertex at x=" + p.xs()[i]);
+            }
+        }
+    }
+
+    @Test
+    void aCornerThatFadesTowardsTwoEdgesHasAMitredRidge() {
+        // 0 on three corners and 1 at the far one: the fade is min(u, v), not u * v
+        ShadowRect corner = new ShadowRect(0, 0, 2, 2, 0, 0.0, 0.0, 0.0, 1.0);
+        List<Piece> pieces = run(List.of(corner), Mat3x4.translation(0, 5, 0), VANILLA, FLAT_GROUND_AT_4);
+        assertEquals(4.0, totalArea(pieces), 1e-9);
+        boolean checkedMiddle = false;
+        for (Piece p : pieces) {
+            for (int i = 0; i < p.n(); i++) {
+                double expected = BASE_ALPHA * Math.min(p.xs()[i], p.zs()[i]) / 2.0;
+                assertEquals(expected, p.alphas()[i], 1e-6, "vertex at " + p.xs()[i] + ", " + p.zs()[i]);
+                checkedMiddle |= Math.abs(p.xs()[i] - 1) < 1e-9 && Math.abs(p.zs()[i] - 1) < 1e-9;
+            }
+        }
+        assertTrue(checkedMiddle, "the middle of the corner is a vertex of the pieces");
+    }
+
+    @Test
+    void theOtherDiagonalIsUsedWhenItsCornersAreTheDarker() {
+        // dark on the (maxX, minZ) and (minX, maxZ) corners
+        ShadowRect ridge = new ShadowRect(0, 0, 2, 2, 0, 0.0, 1.0, 1.0, 0.0);
+        List<Piece> pieces = run(List.of(ridge), Mat3x4.translation(0, 5, 0), VANILLA, FLAT_GROUND_AT_4);
+        assertEquals(4.0, totalArea(pieces), 1e-9);
+        for (Piece p : pieces) {
+            for (int i = 0; i < p.n(); i++) {
+                if (Math.abs(p.xs()[i] - 1) < 1e-9 && Math.abs(p.zs()[i] - 1) < 1e-9) {
+                    // on the ridge between the two dark corners the fade is 1, not the 0.5 of the other split
+                    assertEquals(BASE_ALPHA, p.alphas()[i], 1e-6);
+                }
+            }
+        }
+    }
+
+    @Test
+    void anyFadeKeepsTheAreaOfTheRectangle() {
+        double[][] corners = {{0, 0, 0, 1}, {1, 0, 0, 0}, {0.2, 0.9, 0.4, 0.7}, {0, 1, 1, 0}};
+        for (double[] a : corners) {
+            ShadowRect r = new ShadowRect(0.3, 0.4, 5.1, 3.9, 0, a[0], a[1], a[2], a[3]);
+            Mat3x4 m = Mat3x4.translation(2.2, 5, 7.7).after(Mat3x4.rotationY(Math.toRadians(41)));
+            // slivers under 1e-4 are dropped on purpose, so the total may fall a little short
+            assertEquals(r.area(), totalArea(run(List.of(r), m, VANILLA, FLAT_GROUND_AT_4)), 1e-3);
+        }
+    }
+
+    @Test
+    void aFadeFollowsTheRectangleWhenItIsYawed() {
+        // The fade belongs to the rectangle, not to the world: after turning, the dark end is still the far end.
+        ShadowRect fade = new ShadowRect(0, 0, 6, 1, 0, 0.0, 1.0, 0.0, 1.0);
+        Mat3x4 m = Mat3x4.translation(20, 5, 20).after(Mat3x4.rotationY(Math.toRadians(90)));
+        // rotation by 90 degrees about Y sends local +x to world -z
+        for (Piece p : run(List.of(fade), m, VANILLA, FLAT_GROUND_AT_4)) {
+            for (int i = 0; i < p.n(); i++) {
+                double localX = 20 - p.zs()[i];
+                assertEquals(BASE_ALPHA * localX / 6.0, p.alphas()[i], 1e-6, "vertex at z=" + p.zs()[i]);
+            }
+        }
+    }
+
+    @Test
+    void theFadeIsMultipliedByTheDarknessTheGroundAllows() {
+        ShadowRect fade = new ShadowRect(0, 0, 2, 1, 0, 0.0, 1.0, 0.0, 1.0);
+        ShadowProjector.Ground dim = (cx, cz, startY, depth, out) -> {
+            out[0] = 4.0;
+            out[1] = 0.5;
+            return true;
+        };
+        for (Piece p : run(List.of(fade), Mat3x4.translation(0, 5, 0), VANILLA, 0.5, dim)) {
+            for (int i = 0; i < p.n(); i++) {
+                assertEquals(0.25 * 0.5 * 0.5 * p.xs()[i] / 2.0, p.alphas()[i], 1e-6);
+            }
+        }
     }
 }
