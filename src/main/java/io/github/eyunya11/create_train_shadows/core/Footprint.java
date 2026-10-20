@@ -81,6 +81,102 @@ public final class Footprint {
         }
     }
 
+    /**
+     * Grows every rectangle by {@code margin} on all sides and returns the union as disjoint rectangles, so
+     * that drawing them with transparency never doubles up along a seam. Where grown rectangles overlap, the
+     * lower underside wins. With a margin of 0 this only merges rectangles that touch and share an underside.
+     */
+    public static List<ShadowRect> expand(List<LocalRect> rects, double margin) {
+        if (rects.isEmpty()) {
+            return List.of();
+        }
+
+        // Every edge of every grown rectangle is a grid line; between two lines a cell is either covered or not.
+        double[] xs = new double[rects.size() * 2];
+        double[] zs = new double[rects.size() * 2];
+        for (int i = 0; i < rects.size(); i++) {
+            LocalRect r = rects.get(i);
+            xs[2 * i] = r.minX() - margin;
+            xs[2 * i + 1] = r.maxX() + margin;
+            zs[2 * i] = r.minZ() - margin;
+            zs[2 * i + 1] = r.maxZ() + margin;
+        }
+        xs = sortedDistinct(xs);
+        zs = sortedDistinct(zs);
+
+        int nx = xs.length - 1;
+        int nz = zs.length - 1;
+        boolean[] covered = new boolean[nx * nz];
+        int[] bottom = new int[nx * nz];
+        for (LocalRect r : rects) {
+            int x0 = Arrays.binarySearch(xs, r.minX() - margin);
+            int x1 = Arrays.binarySearch(xs, r.maxX() + margin);
+            int z0 = Arrays.binarySearch(zs, r.minZ() - margin);
+            int z1 = Arrays.binarySearch(zs, r.maxZ() + margin);
+            for (int ix = x0; ix < x1; ix++) {
+                for (int iz = z0; iz < z1; iz++) {
+                    int cell = iz * nx + ix;
+                    bottom[cell] = covered[cell] ? Math.min(bottom[cell], r.bottomY()) : r.bottomY();
+                    covered[cell] = true;
+                }
+            }
+        }
+
+        // Merge cells with the same underside into rectangles, the same way build() merges columns.
+        boolean[] used = new boolean[nx * nz];
+        List<ShadowRect> merged = new ArrayList<>();
+        for (int iz = 0; iz < nz; iz++) {
+            for (int ix = 0; ix < nx; ix++) {
+                int start = iz * nx + ix;
+                if (!covered[start] || used[start]) {
+                    continue;
+                }
+                int level = bottom[start];
+                int width = 1;
+                while (ix + width < nx && canMerge(covered, used, bottom, iz * nx + ix + width, level)) {
+                    width++;
+                }
+                int depth = 1;
+                while (iz + depth < nz && rowCanMerge(covered, used, bottom, nx, ix, iz + depth, width, level)) {
+                    depth++;
+                }
+                for (int dz = 0; dz < depth; dz++) {
+                    for (int dx = 0; dx < width; dx++) {
+                        used[(iz + dz) * nx + ix + dx] = true;
+                    }
+                }
+                merged.add(new ShadowRect(xs[ix], zs[iz], xs[ix + width], zs[iz + depth], level));
+            }
+        }
+        return merged;
+    }
+
+    private static boolean rowCanMerge(boolean[] covered, boolean[] used, int[] bottom, int nx, int ix, int iz,
+        int width, int level) {
+        for (int dx = 0; dx < width; dx++) {
+            if (!canMerge(covered, used, bottom, iz * nx + ix + dx, level)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean canMerge(boolean[] covered, boolean[] used, int[] bottom, int cell, int level) {
+        return covered[cell] && !used[cell] && bottom[cell] == level;
+    }
+
+    private static double[] sortedDistinct(double[] values) {
+        double[] sorted = values.clone();
+        Arrays.sort(sorted);
+        int n = 0;
+        for (int i = 0; i < sorted.length; i++) {
+            if (i == 0 || sorted[i] != sorted[i - 1]) {
+                sorted[n++] = sorted[i];
+            }
+        }
+        return Arrays.copyOf(sorted, n);
+    }
+
     private static long pack(int x, int z) {
         return ((long) x << 32) | (z & 0xFFFFFFFFL);
     }

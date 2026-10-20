@@ -11,11 +11,14 @@ import com.simibubi.create.content.contraptions.Contraption;
 import com.simibubi.create.content.trains.entity.CarriageContraptionEntity;
 import com.simibubi.create.content.trains.entity.CarriageContraptionEntityRenderer;
 
+import io.github.eyunya11.create_train_shadows.Config;
 import io.github.eyunya11.create_train_shadows.Create_train_shadows;
-import io.github.eyunya11.create_train_shadows.core.LocalRect;
+import io.github.eyunya11.create_train_shadows.client.Diagnostics.Outcome;
 import io.github.eyunya11.create_train_shadows.core.Mat3x4;
 import io.github.eyunya11.create_train_shadows.core.ShadowOpacity;
+import io.github.eyunya11.create_train_shadows.core.ShadowParams;
 import io.github.eyunya11.create_train_shadows.core.ShadowProjector;
+import io.github.eyunya11.create_train_shadows.core.ShadowRect;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -32,9 +35,6 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
     // Plain white, tinted black per vertex: a flat shadow with hard edges, not the round blob of vanilla.
     private static final RenderType SHADOW_LAYER =
         RenderType.entityNoOutline(ResourceLocation.withDefaultNamespace("textures/misc/white.png"));
-
-    // Vanilla's shadowStrength for entities is 1. Becomes a setting later.
-    private static final double SHADOW_STRENGTH = 1.0;
 
     private final ShadowProjector projector = new ShadowProjector();
     private final ShadowDrawer drawer = new ShadowDrawer();
@@ -57,36 +57,46 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
             Create_train_shadows.LOGGER.info("TrainShadowRenderer is rendering a train");
         }
 
-        renderShadow(entity, partialTicks, ms, buffers);
+        Diagnostics.record(renderShadow(entity, partialTicks, ms, buffers));
     }
 
-    private void renderShadow(CarriageContraptionEntity entity, float partialTicks, PoseStack ms,
+    /** @return what became of the request, for the diagnostics */
+    private Outcome renderShadow(CarriageContraptionEntity entity, float partialTicks, PoseStack ms,
         MultiBufferSource buffers) {
         // The same cases in which Create skips drawing the train itself.
         if (!entity.validForRender || entity.firstPositionUpdate) {
-            return;
+            return Outcome.NOT_READY;
         }
 
         Minecraft minecraft = Minecraft.getInstance();
-        if (!minecraft.options.entityShadows().get() || entity.isInvisible()) {
-            return;
+        if (!minecraft.options.entityShadows().get()) {
+            return Outcome.SHADOWS_OFF_IN_VIDEO_SETTINGS;
+        }
+        if (!Config.enabled()) {
+            return Outcome.DISABLED_IN_MOD_CONFIG;
+        }
+        if (entity.isInvisible()) {
+            return Outcome.INVISIBLE;
         }
         Level level = entity.level();
         if (level != minecraft.level) {
-            return; // Ponder scenes and other virtual levels
+            return Outcome.OTHER_LEVEL; // Ponder scenes and other virtual levels
         }
         Contraption contraption = entity.getContraption();
         if (contraption == null) {
-            return;
+            return Outcome.NO_CONTRAPTION;
         }
 
-        double strength = ShadowOpacity.distanceFade(entityRenderDispatcher.distanceToSqr(entity)) * SHADOW_STRENGTH;
-        if (strength <= 0) {
-            return;
+        ShadowParams params = Config.params();
+        double distanceSq = entityRenderDispatcher.distanceToSqr(entity);
+        Diagnostics.distance(Math.sqrt(distanceSq));
+        double distanceFactor = ShadowOpacity.distanceFactor(distanceSq, params.fadeDistance());
+        if (distanceFactor <= 0) {
+            return Outcome.TOO_FAR;
         }
-        List<LocalRect> footprint = FootprintCache.get(contraption);
+        List<ShadowRect> footprint = FootprintCache.get(contraption, params.margin());
         if (footprint.isEmpty()) {
-            return;
+            return Outcome.NO_FOOTPRINT;
         }
 
         // The transform Create draws the blocks with: local -> relative to the entity (ContraptionMatrices).
@@ -105,7 +115,9 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
 
         VertexConsumer consumer = buffers.getBuffer(SHADOW_LAYER);
         drawer.begin(consumer, ms.last(), x, y, z);
-        projector.project(footprint, localToWorld, strength, ground.use(level), drawer);
+        projector.project(footprint, localToWorld, params, distanceFactor, ground.use(level), drawer);
+        Diagnostics.drawn(drawer.polygonCount(), Math.sqrt(distanceSq));
+        return Outcome.DRAWN;
     }
 
     private static Mat3x4 toWorld(Matrix4f model, double x, double y, double z) {

@@ -8,7 +8,11 @@ import java.util.List;
  * <p>Each footprint rectangle is moved into the world, flattened onto the XZ plane (which gives a
  * parallelogram once the body is yawed or pitched), and cut along the world's block grid. Every piece is
  * handed to the {@link Ground} to find the surface that receives it, and to the {@link Sink} with an alpha
- * that depends on how far the underside is above that surface.
+ * that depends on how far the body is above that surface.
+ *
+ * <p>Height is measured from the lowest part of the body: a rectangle whose underside is a block above the
+ * lowest one is treated as if it sat at the lowest level, so a body is as dark under its upper floor as under
+ * its wheels, and fades only when the whole body is high above the ground.
  *
  * <p>One instance owns scratch buffers, so it must not be shared between threads; the render thread is
  * the only user.
@@ -45,17 +49,25 @@ public final class ShadowProjector {
     private final double[] hit = new double[2];
 
     /**
-     * @param rects         the footprint, in the body's local block coordinates
-     * @param localToWorld  the body's local-to-world transform for this frame
-     * @param strength      vanilla's {@code opacity}, see {@link ShadowOpacity#alpha}
+     * @param rects          the shadow footprint, in the body's local block coordinates
+     * @param localToWorld   the body's local-to-world transform for this frame
+     * @param params         how the shadow looks
+     * @param distanceFactor {@link ShadowOpacity#distanceFactor} for the camera, multiplied into every alpha
      */
-    public void project(List<LocalRect> rects, Mat3x4 localToWorld, double strength, Ground ground, Sink sink) {
-        if (strength <= 0) {
+    public void project(List<ShadowRect> rects, Mat3x4 localToWorld, ShadowParams params, double distanceFactor,
+        Ground ground, Sink sink) {
+        if (distanceFactor <= 0 || rects.isEmpty()) {
             return;
         }
-        int depth = ShadowOpacity.maxDepth(strength);
+        int lowest = Integer.MAX_VALUE;
+        for (ShadowRect rect : rects) {
+            lowest = Math.min(lowest, rect.bottomY());
+        }
 
-        for (LocalRect rect : rects) {
+        for (ShadowRect rect : rects) {
+            double standoff = rect.bottomY() - lowest;
+            int depth = ShadowOpacity.searchDepth(params, standoff);
+
             double y = rect.bottomY();
             double c00x = localToWorld.x(rect.minX(), y, rect.minZ());
             double c00y = localToWorld.y(rect.minX(), y, rect.minZ());
@@ -117,7 +129,8 @@ public final class ShadowProjector {
                     if (!ground.sample(cellX, cellZ, startY, depth, hit)) {
                         continue;
                     }
-                    float alpha = ShadowOpacity.alpha(strength, undersideY - hit[0], hit[1]);
+                    double height = undersideY - hit[0] - standoff;
+                    float alpha = (float) (ShadowOpacity.alpha(params, height, hit[1]) * distanceFactor);
                     if (alpha > 0) {
                         sink.polygon(bufAX, bufAZ, n, hit[0] + LIFT, alpha);
                     }

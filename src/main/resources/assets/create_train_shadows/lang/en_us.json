@@ -1,2 +1,15 @@
 {
+  "create_train_shadows.configuration.title": "Create: Train Shadows",
+  "create_train_shadows.configuration.enabled": "Train shadows",
+  "create_train_shadows.configuration.enabled.tooltip": "Draw shadows under Create trains.",
+  "create_train_shadows.configuration.opacity": "Shadow darkness",
+  "create_train_shadows.configuration.opacity.tooltip": "How dark the shadow is where it is darkest, in full light. Vanilla entity shadows use 0.5.",
+  "create_train_shadows.configuration.fadeDistance": "Fade-out distance",
+  "create_train_shadows.configuration.fadeDistance.tooltip": "Camera distance, in blocks, at which the shadow has faded out completely. Vanilla uses 16.",
+  "create_train_shadows.configuration.fadeHeight": "Fade-out height",
+  "create_train_shadows.configuration.fadeHeight.tooltip": "Once a train is higher above the ground than the grace height, the shadow fades out over this many blocks.",
+  "create_train_shadows.configuration.graceHeight": "Grace height",
+  "create_train_shadows.configuration.graceHeight.tooltip": "Height above the lowest part of the train that still counts as touching the ground. Create hangs a train one block above its track.",
+  "create_train_shadows.configuration.margin": "Shadow spread",
+  "create_train_shadows.configuration.margin.tooltip": "How far the shadow reaches past the outline of the train on every side, in blocks."
 }

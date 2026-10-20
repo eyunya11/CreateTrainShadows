@@ -16,6 +16,7 @@ final class ShadowDrawer implements ShadowProjector.Sink {
     private VertexConsumer consumer;
     private PoseStack.Pose pose;
     private double originX, originY, originZ;
+    private int polygonCount;
 
     void begin(VertexConsumer consumer, PoseStack.Pose pose, double originX, double originY, double originZ) {
         this.consumer = consumer;
@@ -23,10 +24,17 @@ final class ShadowDrawer implements ShadowProjector.Sink {
         this.originX = originX;
         this.originY = originY;
         this.originZ = originZ;
+        this.polygonCount = 0;
+    }
+
+    /** How many polygons were written since {@link #begin}. */
+    int polygonCount() {
+        return polygonCount;
     }
 
     @Override
     public void polygon(double[] xs, double[] zs, int n, double y, float alpha) {
+        polygonCount++;
         // The render type draws quads
         for (int quad = 0; quad < QuadFan.quadCount(n); quad++) {
             for (int corner = 0; corner < 4; corner++) {
