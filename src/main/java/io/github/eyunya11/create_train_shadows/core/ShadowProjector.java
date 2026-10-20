@@ -1,0 +1,181 @@
+package io.github.eyunya11.create_train_shadows.core;
+
+import java.util.List;
+
+/**
+ * Projects the footprint of a moving body straight down onto the ground and reports the pieces to draw.
+ *
+ * <p>Each footprint rectangle is moved into the world, flattened onto the XZ plane (which gives a
+ * parallelogram once the body is yawed or pitched), and cut along the world's block grid. Every piece is
+ * handed to the {@link Ground} to find the surface that receives it, and to the {@link Sink} with an alpha
+ * that depends on how far the underside is above that surface.
+ *
+ * <p>One instance owns scratch buffers, so it must not be shared between threads; the render thread is
+ * the only user.
+ */
+public final class ShadowProjector {
+    /** Vanilla lifts shadows this far above the receiving surface to avoid z-fighting. */
+    public static final double LIFT = 1.0 / 64.0;
+
+    private static final double MIN_AREA = 1.0e-4;
+    private static final double MIN_DETERMINANT = 1.0e-9;
+
+    public interface Ground {
+        /**
+         * Finds the surface that receives a shadow in the world cell (cellX, cellZ), looking from the block
+         * row {@code startY} downwards for at most {@code depth} rows.
+         *
+         * @param out receives [surface height, light brightness 0..1] when a surface is found
+         * @return whether a surface that can receive a shadow was found
+         */
+        boolean sample(int cellX, int cellZ, int startY, int depth, double[] out);
+    }
+
+    public interface Sink {
+        /** A convex polygon with vertices (xs[i], y, zs[i]) for i in [0, n), lying flat at height y. */
+        void polygon(double[] xs, double[] zs, int n, double y, float alpha);
+    }
+
+    private final double[] polyX = new double[4];
+    private final double[] polyZ = new double[4];
+    private final double[] bufAX = new double[16];
+    private final double[] bufAZ = new double[16];
+    private final double[] bufBX = new double[16];
+    private final double[] bufBZ = new double[16];
+    private final double[] hit = new double[2];
+
+    /**
+     * @param rects         the footprint, in the body's local block coordinates
+     * @param localToWorld  the body's local-to-world transform for this frame
+     * @param strength      vanilla's {@code opacity}, see {@link ShadowOpacity#alpha}
+     */
+    public void project(List<LocalRect> rects, Mat3x4 localToWorld, double strength, Ground ground, Sink sink) {
+        if (strength <= 0) {
+            return;
+        }
+        int depth = ShadowOpacity.maxDepth(strength);
+
+        for (LocalRect rect : rects) {
+            double y = rect.bottomY();
+            double c00x = localToWorld.x(rect.minX(), y, rect.minZ());
+            double c00y = localToWorld.y(rect.minX(), y, rect.minZ());
+            double c00z = localToWorld.z(rect.minX(), y, rect.minZ());
+            double c10x = localToWorld.x(rect.maxX(), y, rect.minZ());
+            double c10y = localToWorld.y(rect.maxX(), y, rect.minZ());
+            double c10z = localToWorld.z(rect.maxX(), y, rect.minZ());
+            double c01x = localToWorld.x(rect.minX(), y, rect.maxZ());
+            double c01y = localToWorld.y(rect.minX(), y, rect.maxZ());
+            double c01z = localToWorld.z(rect.minX(), y, rect.maxZ());
+
+            // The underside is the parallelogram P(u, v) = c00 + u * eU + v * eV, u and v in [0, 1].
+            double eUx = c10x - c00x, eUy = c10y - c00y, eUz = c10z - c00z;
+            double eVx = c01x - c00x, eVy = c01y - c00y, eVz = c01z - c00z;
+            double det = eUx * eVz - eUz * eVx;
+            if (Math.abs(det) < MIN_DETERMINANT) {
+                continue; // standing on its side; there is no footprint
+            }
+
+            polyX[0] = c00x;
+            polyZ[0] = c00z;
+            polyX[1] = c10x;
+            polyZ[1] = c10z;
+            polyX[2] = c10x + eVx;
+            polyZ[2] = c10z + eVz;
+            polyX[3] = c01x;
+            polyZ[3] = c01z;
+
+            double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
+            double minZ = Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
+            for (int i = 0; i < 4; i++) {
+                minX = Math.min(minX, polyX[i]);
+                maxX = Math.max(maxX, polyX[i]);
+                minZ = Math.min(minZ, polyZ[i]);
+                maxZ = Math.max(maxZ, polyZ[i]);
+            }
+
+            for (int cellX = (int) Math.floor(minX); cellX <= (int) Math.floor(maxX); cellX++) {
+                for (int cellZ = (int) Math.floor(minZ); cellZ <= (int) Math.floor(maxZ); cellZ++) {
+                    int n = clipToCell(cellX, cellZ);
+                    if (n < 3 || area(bufAX, bufAZ, n) < MIN_AREA) {
+                        continue;
+                    }
+
+                    // Height of the underside above the middle of this piece.
+                    double centreX = 0, centreZ = 0;
+                    for (int i = 0; i < n; i++) {
+                        centreX += bufAX[i];
+                        centreZ += bufAZ[i];
+                    }
+                    centreX /= n;
+                    centreZ /= n;
+                    double dx = centreX - c00x, dz = centreZ - c00z;
+                    double u = (dx * eVz - dz * eVx) / det;
+                    double v = (eUx * dz - eUz * dx) / det;
+                    double undersideY = c00y + u * eUy + v * eVy;
+
+                    int startY = (int) Math.floor(undersideY + 1.0e-6);
+                    if (!ground.sample(cellX, cellZ, startY, depth, hit)) {
+                        continue;
+                    }
+                    float alpha = ShadowOpacity.alpha(strength, undersideY - hit[0], hit[1]);
+                    if (alpha > 0) {
+                        sink.polygon(bufAX, bufAZ, n, hit[0] + LIFT, alpha);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Cuts the current footprint quad to the cell [cellX, cellX + 1] x [cellZ, cellZ + 1]. The result is left
+     * in bufA and its vertex count is returned.
+     */
+    private int clipToCell(int cellX, int cellZ) {
+        System.arraycopy(polyX, 0, bufAX, 0, 4);
+        System.arraycopy(polyZ, 0, bufAZ, 0, 4);
+        int n = 4;
+        n = clip(bufAX, bufAZ, n, bufBX, bufBZ, true, cellX, true);
+        n = clip(bufBX, bufBZ, n, bufAX, bufAZ, true, cellX + 1, false);
+        n = clip(bufAX, bufAZ, n, bufBX, bufBZ, false, cellZ, true);
+        n = clip(bufBX, bufBZ, n, bufAX, bufAZ, false, cellZ + 1, false);
+        return n;
+    }
+
+    /**
+     * One Sutherland-Hodgman step: keeps the part of the polygon with coordinate >= bound (keepAbove) or
+     * <= bound, on the X axis (alongX) or the Z axis.
+     */
+    private static int clip(double[] inX, double[] inZ, int n, double[] outX, double[] outZ,
+        boolean alongX, double bound, boolean keepAbove) {
+        int m = 0;
+        for (int i = 0; i < n && m < outX.length - 1; i++) {
+            int j = (i + 1) % n;
+            double ai = alongX ? inX[i] : inZ[i];
+            double aj = alongX ? inX[j] : inZ[j];
+            boolean insideI = keepAbove ? ai >= bound : ai <= bound;
+            boolean insideJ = keepAbove ? aj >= bound : aj <= bound;
+
+            if (insideI) {
+                outX[m] = inX[i];
+                outZ[m] = inZ[i];
+                m++;
+            }
+            if (insideI != insideJ) {
+                double t = (bound - ai) / (aj - ai);
+                outX[m] = inX[i] + t * (inX[j] - inX[i]);
+                outZ[m] = inZ[i] + t * (inZ[j] - inZ[i]);
+                m++;
+            }
+        }
+        return m;
+    }
+
+    private static double area(double[] xs, double[] zs, int n) {
+        double twice = 0;
+        for (int i = 0; i < n; i++) {
+            int j = (i + 1) % n;
+            twice += xs[i] * zs[j] - xs[j] * zs[i];
+        }
+        return Math.abs(twice) / 2.0;
+    }
+}
