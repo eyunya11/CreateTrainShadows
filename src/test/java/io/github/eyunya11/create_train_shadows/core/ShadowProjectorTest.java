@@ -418,4 +418,66 @@ class ShadowProjectorTest {
             }
         }
     }
+
+    /**
+     * Surfaces one above the other in every column: the tops of blocks, highest first. Like the real ground, each
+     * answer is the first one whose air row is at or below the row asked from and within the depth.
+     */
+    private static ShadowProjector.Ground layers(double... tops) {
+        return (cx, cz, startY, depth, out) -> {
+            for (double top : tops) {
+                int airRow = (int) Math.floor(top - 1.0e-6) + 1;
+                if (airRow <= startY && airRow > startY - depth) {
+                    out[0] = top;
+                    out[1] = 1.0;
+                    return true;
+                }
+            }
+            return false;
+        };
+    }
+
+    @Test
+    void theFloorUnderABlockThatHangsUnderTheBodyTakesAFainterShadowToo() {
+        // A block hung under the carriage (its top at y = 4) and the floor of the pit under it (at y = 1).
+        List<Piece> pieces = run(CARRIAGE, Mat3x4.translation(10.3, 5, 20.6), DEFAULT, layers(4.0, 1.0));
+        List<Piece> upper = pieces.stream().filter(p -> Math.abs(p.y() - (4.0 + ShadowProjector.LIFT)) < 1e-9).toList();
+        List<Piece> lower = pieces.stream().filter(p -> Math.abs(p.y() - (1.0 + ShadowProjector.LIFT)) < 1e-9).toList();
+        assertEquals(pieces.size(), upper.size() + lower.size());
+        assertEquals(21.0, totalArea(upper), 1e-9);
+        assertEquals(21.0, totalArea(lower), 1e-9);
+        for (Piece p : upper) {
+            assertEquals(0.6f, p.alpha(), 1e-6f); // 1 block above it: inside the grace height
+        }
+        for (Piece p : lower) {
+            assertEquals(0.6f * (1 - 3.0f / 8.0f), p.alpha(), 1e-6f); // 4 blocks above it: 3 beyond the grace height
+        }
+    }
+
+    @Test
+    void aColumnTakesAtMostThreeSurfaces() {
+        List<Piece> pieces = run(rect1(), Mat3x4.translation(10.2, 7, 20.2), DEFAULT, layers(5.0, 4.0, 3.0, 2.0, 1.0));
+        assertEquals(ShadowProjector.MAX_SURFACES, pieces.size());
+    }
+
+    @Test
+    void aSurfaceBeyondTheFadeGetsNothingAndEndsTheSearch() {
+        // The second surface is 11 blocks under the body: past the fade height
+        List<Piece> pieces = run(CARRIAGE, Mat3x4.translation(10.3, 5, 20.6), DEFAULT, layers(4.0, -6.0));
+        assertEquals(21.0, totalArea(pieces), 1e-9);
+        for (Piece p : pieces) {
+            assertEquals(4.0 + ShadowProjector.LIFT, p.y(), 1e-9);
+        }
+    }
+
+    @Test
+    void aGroundThatAnswersWithTheSameSurfaceAgainIsTakenOnce() {
+        // The projector asks again from under the surface it was given; an answer that is not under it ends it
+        assertEquals(21.0, totalArea(run(CARRIAGE, Mat3x4.translation(10.3, 5, 20.6), DEFAULT, FLAT_GROUND_AT_4)), 1e-9);
+    }
+
+    private static List<ShadowRect> rect1() {
+        return List.of(rect(0, 0, 0.5, 0.5, 0));
+    }
 }
+

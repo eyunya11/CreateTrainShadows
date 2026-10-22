@@ -7,9 +7,11 @@ import java.util.List;
  *
  * <p>Each footprint rectangle is moved into the world, flattened onto the XZ plane (which gives a
  * parallelogram once the body is yawed or pitched), and cut along the world's block grid. Every piece is
- * handed to the {@link Ground} to find the surface that receives it, and to the {@link Sink} with an alpha
+ * handed to the {@link Ground} to find the surfaces that receive it, and to the {@link Sink} with an alpha
  * for each corner: the darkness the ground allows (how far the body is above it, how well it is lit, how far
- * the camera is) times the rectangle's own fade, which is what softens the edge of the shadow.
+ * the camera is) times the rectangle's own fade, which is what softens the edge of the shadow. A column takes
+ * a shadow on its first surface under the body and on those below that (the floor under a block that hangs
+ * under the body), each fainter than the one above.
  *
  * <p>Height is measured from the lowest part of the body: a rectangle whose underside is a block above the
  * lowest one is treated as if it sat at the lowest level, so a body is as dark under its upper floor as under
@@ -27,13 +29,18 @@ public final class ShadowProjector {
      */
     public static final double LIFT = 1.0 / 512.0;
 
+    /** How many surfaces one column of the ground can take a shadow on: a block hanging under the body and what is below it. */
+    static final int MAX_SURFACES = 3;
+
     private static final double MIN_AREA = 1.0e-4;
     private static final double MIN_DETERMINANT = 1.0e-9;
 
     public interface Ground {
         /**
          * Finds the surface that receives a shadow in the world cell (cellX, cellZ), looking from the block
-         * row {@code startY} downwards for at most {@code depth} rows.
+         * row {@code startY} downwards for at most {@code depth} rows. The projector asks again from the row
+         * of the block that took a surface, to find what lies under it, so each answer is the first surface
+         * below the row it is asked from.
          *
          * @param out receives, when a surface is found: [0] the height of the surface at the middle of the
          *            cell, [1] the light brightness 0..1, [2] and [3] how much the height changes per block
@@ -182,27 +189,41 @@ public final class ShadowProjector {
                 centreZ /= n;
                 double undersideY = c00y + u(centreX, centreZ) * eUy + v(centreX, centreZ) * eVy;
 
-                int startY = (int) Math.floor(undersideY + 1.0e-6);
-                hit[2] = 0;
-                hit[3] = 0;
-                if (!ground.sample(cellX, cellZ, startY, depth, hit)) {
-                    continue;
-                }
-                // The surface may be tilted (a sloping track): its height at a point of the cell
-                double middleX = cellX + 0.5, middleZ = cellZ + 0.5;
-                double surfaceHere = hit[0] + hit[2] * (centreX - middleX) + hit[3] * (centreZ - middleZ);
-                double height = undersideY - surfaceHere - standoff;
-                double base = ShadowOpacity.alpha(params, height, hit[1]) * distanceFactor;
-                if (base <= 0) {
-                    continue;
-                }
+                // Every surface under the piece takes a shadow, fainter the further down it is: the top of a block
+                // that hangs under the body, and then the floor under that block (which a pit under a bridge
+                // would otherwise leave bare, a bright window in the middle of the shadow)
+                int searchStart = (int) Math.floor(undersideY + 1.0e-6);
+                int remaining = depth;
+                for (int surface = 0; surface < MAX_SURFACES && remaining > 0; surface++) {
+                    hit[2] = 0;
+                    hit[3] = 0;
+                    if (!ground.sample(cellX, cellZ, searchStart, remaining, hit)) {
+                        break;
+                    }
+                    // The block that took this surface; the next one has to be under it
+                    int blockRow = (int) Math.floor(hit[0] - 1.0e-6);
+                    if (surface > 0 && blockRow >= searchStart) {
+                        break;
+                    }
+                    remaining -= searchStart - blockRow;
+                    searchStart = blockRow;
 
-                for (int i = 0; i < n; i++) {
-                    double fade = fade0 + fadeU * u(bufAX[i], bufAZ[i]) + fadeV * v(bufAX[i], bufAZ[i]);
-                    alphas[i] = (float) (base * Math.max(0.0, Math.min(1.0, fade)));
-                    heights[i] = hit[0] + hit[2] * (bufAX[i] - middleX) + hit[3] * (bufAZ[i] - middleZ) + LIFT;
+                    // The surface may be tilted (a sloping track): its height at a point of the cell
+                    double middleX = cellX + 0.5, middleZ = cellZ + 0.5;
+                    double surfaceHere = hit[0] + hit[2] * (centreX - middleX) + hit[3] * (centreZ - middleZ);
+                    double height = undersideY - surfaceHere - standoff;
+                    double base = ShadowOpacity.alpha(params, height, hit[1]) * distanceFactor;
+                    if (base <= 0) {
+                        break; // and what is lower is further from the body
+                    }
+
+                    for (int i = 0; i < n; i++) {
+                        double fade = fade0 + fadeU * u(bufAX[i], bufAZ[i]) + fadeV * v(bufAX[i], bufAZ[i]);
+                        alphas[i] = (float) (base * Math.max(0.0, Math.min(1.0, fade)));
+                        heights[i] = hit[0] + hit[2] * (bufAX[i] - middleX) + hit[3] * (bufAZ[i] - middleZ) + LIFT;
+                    }
+                    sink.polygon(bufAX, heights, bufAZ, alphas, n);
                 }
-                sink.polygon(bufAX, heights, bufAZ, alphas, n);
             }
         }
     }

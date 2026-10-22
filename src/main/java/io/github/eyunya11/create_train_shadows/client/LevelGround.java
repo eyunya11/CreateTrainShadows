@@ -21,9 +21,11 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * <p>Create's track is not a full block. Its collision shape is a 2/16 high plate over the whole cell, so by
  * the vanilla rule a shadow would be drawn on the block under the track, inside the track's own model, and
  * would show only beside it; and the rails stand higher than that plate, so they would stay bright. When the
- * track setting is on, a piece of Create's track takes the shadow at the top of its rails instead, tilted on a
- * slope (which has no collision at all). Unless {@code -Dcreate_train_shadows.vanillaReceiver=true} is set,
- * other plates (one box covering the whole cell) also receive the shadow, at the top of the plate.
+ * track setting is PLATE, a piece of Create's track takes the shadow at the top of its rails instead, tilted on
+ * a slope (which has no collision at all). In the other settings the track takes no shadow here, so that it
+ * lets the shadow through to whatever lies under it (a track on a bridge over a pit); with MODEL it is shaded
+ * by its own model. Unless {@code -Dcreate_train_shadows.vanillaReceiver=true} is set, other plates (one box
+ * covering the whole cell) also receive the shadow, at the top of the plate.
  */
 final class LevelGround implements ShadowProjector.Ground {
     private static final boolean VANILLA_RECEIVER = Boolean.getBoolean("create_train_shadows.vanillaReceiver");
@@ -52,6 +54,18 @@ final class LevelGround implements ShadowProjector.Ground {
             if (state.getRenderShape() == RenderShape.INVISIBLE) {
                 continue;
             }
+            if (!tracks && state.getBlock() instanceof TrackBlock) {
+                // The track is shaded by its own model (or not at all). Its plate must not take the shadow as well:
+                // what lies under an elevated track, the floor of a pit it spans, then never gets any.
+                continue;
+            }
+            // The light first: it is cheap, and most blocks below the first surface (the ground under the ground) are
+            // in the dark, where there is no shadow to draw
+            above.set(cellX, y, cellZ);
+            int light = level.getMaxLocalRawBrightness(above);
+            if (light < ShadowOpacity.MIN_LIGHT) {
+                continue;
+            }
             double top;
             double slopeX = 0, slopeZ = 0;
             if (tracks && onTrackSurface(state)) {
@@ -63,11 +77,6 @@ final class LevelGround implements ShadowProjector.Ground {
                 if (Double.isNaN(top)) {
                     continue;
                 }
-            }
-            above.set(cellX, y, cellZ);
-            int light = level.getMaxLocalRawBrightness(above);
-            if (light < ShadowOpacity.MIN_LIGHT) {
-                continue;
             }
             out[0] = (y - 1) + top;
             out[1] = LightTexture.getBrightness(level.dimensionType(), light);
