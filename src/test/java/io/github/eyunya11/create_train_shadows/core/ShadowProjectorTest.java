@@ -438,7 +438,7 @@ class ShadowProjectorTest {
     }
 
     @Test
-    void theFloorUnderABlockThatHangsUnderTheBodyTakesAFainterShadowToo() {
+    void theFloorUnderABlockThatHangsUnderTheBodyIsAsDarkAsTheBlock() {
         // A block hung under the carriage (its top at y = 4) and the floor of the pit under it (at y = 1).
         List<Piece> pieces = run(CARRIAGE, Mat3x4.translation(10.3, 5, 20.6), DEFAULT, layers(4.0, 1.0));
         List<Piece> upper = pieces.stream().filter(p -> Math.abs(p.y() - (4.0 + ShadowProjector.LIFT)) < 1e-9).toList();
@@ -450,8 +450,40 @@ class ShadowProjectorTest {
             assertEquals(0.6f, p.alpha(), 1e-6f); // 1 block above it: inside the grace height
         }
         for (Piece p : lower) {
-            assertEquals(0.6f * (1 - 3.0f / 8.0f), p.alpha(), 1e-6f); // 4 blocks above it: 3 beyond the grace height
+            // 4 blocks above it, which alone would give 0.6 * (1 - 3 / 8); under the block it is not lighter
+            assertEquals(0.6f, p.alpha(), 1e-6f);
         }
+    }
+
+    @Test
+    void theFloorUnderABlockIsNotLighterThanTheOpenGroundBesideIt() {
+        // Open ground at y = 1 in the columns at even x, a block top at y = 4 with the floor at y = 1 under it in
+        // the odd ones: under the block it must not be brighter than in the open
+        ShadowProjector.Ground ground = (cx, cz, startY, depth, out) -> {
+            double[] tops = cx % 2 == 0 ? new double[] {1.0} : new double[] {4.0, 1.0};
+            for (double top : tops) {
+                int airRow = (int) Math.floor(top - 1.0e-6) + 1;
+                if (airRow <= startY && airRow > startY - depth) {
+                    out[0] = top;
+                    out[1] = 1.0;
+                    return true;
+                }
+            }
+            return false;
+        };
+        double openDarkest = 0, underDarkest = 0;
+        for (Piece p : run(CARRIAGE, Mat3x4.translation(10.3, 5, 20.6), DEFAULT, ground)) {
+            boolean under = (int) Math.floor(p.centreX()) % 2 != 0;
+            if (Math.abs(p.y() - (1.0 + ShadowProjector.LIFT)) > 1e-9) {
+                continue; // the block top
+            }
+            if (under) {
+                underDarkest = Math.max(underDarkest, p.alpha());
+            } else {
+                openDarkest = Math.max(openDarkest, p.alpha());
+            }
+        }
+        assertTrue(openDarkest > 0 && underDarkest >= openDarkest, "open " + openDarkest + ", under " + underDarkest);
     }
 
     @Test

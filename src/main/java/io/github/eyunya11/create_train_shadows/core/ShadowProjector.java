@@ -11,7 +11,7 @@ import java.util.List;
  * for each corner: the darkness the ground allows (how far the body is above it, how well it is lit, how far
  * the camera is) times the rectangle's own fade, which is what softens the edge of the shadow. A column takes
  * a shadow on its first surface under the body and on those below that (the floor under a block that hangs
- * under the body), each fainter than the one above.
+ * under the body), as dark as the first one as long as they are within reach of the body.
  *
  * <p>Height is measured from the lowest part of the body: a rectangle whose underside is a block above the
  * lowest one is treated as if it sat at the lowest level, so a body is as dark under its upper floor as under
@@ -189,11 +189,13 @@ public final class ShadowProjector {
                 centreZ /= n;
                 double undersideY = c00y + u(centreX, centreZ) * eUy + v(centreX, centreZ) * eVy;
 
-                // Every surface under the piece takes a shadow, fainter the further down it is: the top of a block
-                // that hangs under the body, and then the floor under that block (which a pit under a bridge
-                // would otherwise leave bare, a bright window in the middle of the shadow)
+                // Every surface under the piece takes a shadow: the top of a block that hangs under the body, and
+                // then the floor under that block (which a pit under a bridge would otherwise leave bare, a bright
+                // window in the middle of the shadow). A surface that has another over it is no lighter than that
+                // one: under a block it is not brighter than in the open, however far down it lies.
                 int searchStart = (int) Math.floor(undersideY + 1.0e-6);
                 int remaining = depth;
+                double firstHeight = 0;
                 for (int surface = 0; surface < MAX_SURFACES && remaining > 0; surface++) {
                     hit[2] = 0;
                     hit[3] = 0;
@@ -214,7 +216,12 @@ public final class ShadowProjector {
                     double height = undersideY - surfaceHere - standoff;
                     double base = ShadowOpacity.alpha(params, height, hit[1]) * distanceFactor;
                     if (base <= 0) {
-                        break; // and what is lower is further from the body
+                        break; // out of reach, and what is lower is further from the body
+                    }
+                    if (surface == 0) {
+                        firstHeight = height;
+                    } else {
+                        base = ShadowOpacity.alpha(params, Math.min(height, firstHeight), hit[1]) * distanceFactor;
                     }
 
                     for (int i = 0; i < n; i++) {
