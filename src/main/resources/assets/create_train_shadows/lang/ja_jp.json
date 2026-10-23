@@ -1,0 +1,23 @@
+{
+  "create_train_shadows.configuration.title": "Create: Train Shadows",
+  "create_train_shadows.configuration.enabled": "列車の影",
+  "create_train_shadows.configuration.enabled.tooltip": "Create の列車の下に影を描きます。シェーダーパックの使用中は描きません。パックが列車を含めて世界の影を付けるためです。",
+  "create_train_shadows.configuration.opacity": "影の濃さ",
+  "create_train_shadows.configuration.opacity.tooltip": "光が十分あるとき、影が最も濃い所の濃さです。バニラのエンティティの影は 0.5 です。",
+  "create_train_shadows.configuration.fadeDistance": "影が消える距離",
+  "create_train_shadows.configuration.fadeDistance.tooltip": "影が完全に消える、カメラからの距離(ブロック)です。バニラは 16 です。",
+  "create_train_shadows.configuration.fadeHeight": "影が消える高さ",
+  "create_train_shadows.configuration.fadeHeight.tooltip": "列車が猶予の高さより地面から高くなると、この距離(ブロック)をかけて影が薄くなります。",
+  "create_train_shadows.configuration.graceHeight": "猶予の高さ",
+  "create_train_shadows.configuration.graceHeight.tooltip": "列車の最も低い所からこの高さ(ブロック)までは、地面に接しているものとみなします。Create は列車を線路の 1 ブロック上に置きます。",
+  "create_train_shadows.configuration.margin": "影の広がり",
+  "create_train_shadows.configuration.margin.tooltip": "影が列車の輪郭の外側へ広がる距離(ブロック)です。",
+  "create_train_shadows.configuration.softness": "縁のぼかし",
+  "create_train_shadows.configuration.softness.tooltip": "影の外縁で、影が無いところから最も濃くなるまでの幅(ブロック)です。0 にすると縁がはっきりします。",
+  "create_train_shadows.configuration.sideReach": "壁の影の届く距離",
+  "create_train_shadows.configuration.sideReach.tooltip": "列車からこの距離(ブロック)までにある壁の側面(トンネルの壁、ホームの縁、地面の段差)を暗くします。列車のすぐ横が最も濃く、離れるほど薄くなります。0 にすると壁には影を描きません。",
+  "create_train_shadows.configuration.sideOpacity": "壁の影の濃さ",
+  "create_train_shadows.configuration.sideOpacity.tooltip": "光が十分あるとき、列車のすぐ横の壁がどれだけ暗くなるかです。",
+  "create_train_shadows.configuration.trackShadowMode": "線路の影",
+  "create_train_shadows.configuration.trackShadowMode.tooltip": "Create の線路(坂とカーブを含む)への影のつけ方です。MODEL は線路のモデルの面を黒い半透明でもう一度描き、レールと枕木にそのまま影が乗ります。PLATE はレールの高さに半透明の板を敷き、処理が軽くなります。OFF はどちらもしません。"
+}

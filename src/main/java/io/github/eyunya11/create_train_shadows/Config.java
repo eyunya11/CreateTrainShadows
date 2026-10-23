@@ -18,7 +18,8 @@ public final class Config {
     private static final ShadowParams DEFAULTS = ShadowParams.DEFAULT;
 
     private static final ModConfigSpec.BooleanValue ENABLED = BUILDER
-        .comment("Draw shadows under Create trains.")
+        .comment("Draw shadows under Create trains.",
+            "Nothing is drawn while a shader pack is in use: the pack shades the world itself, trains included.")
         .translation("create_train_shadows.configuration.enabled")
         .define("enabled", true);
 

@@ -1,7 +1,7 @@
 {
   "create_train_shadows.configuration.title": "Create: Train Shadows",
   "create_train_shadows.configuration.enabled": "Train shadows",
-  "create_train_shadows.configuration.enabled.tooltip": "Draw shadows under Create trains.",
+  "create_train_shadows.configuration.enabled.tooltip": "Draw shadows under Create trains. Nothing is drawn while a shader pack is in use: the pack shades the world itself, trains included.",
   "create_train_shadows.configuration.opacity": "Shadow darkness",
   "create_train_shadows.configuration.opacity.tooltip": "How dark the shadow is where it is darkest, in full light. Vanilla entity shadows use 0.5.",
   "create_train_shadows.configuration.fadeDistance": "Fade-out distance",
