@@ -1,65 +1,67 @@
 # Create: Train Shadows
 
-Create の列車(`CarriageContraptionEntity`)の下に、車両の足跡の形をした影を描く NeoForge 用のアドオン mod です。Create 本体は改造しません。
+English | [日本語](README.ja.md)
 
-Create's trains have no shadow of their own. This client-side addon draws one under every carriage, in the shape of its footprint, instead of vanilla's round blob.
+A client-side NeoForge addon that draws a shadow under every Create train carriage (`CarriageContraptionEntity`), in the shape of the carriage's footprint instead of vanilla's round blob. Create itself is not modified.
 
-## 動作環境 / Requirements
+Create's trains have no shadow of their own; this addon adds one.
+
+## Requirements
 
 | | |
 |---|---|
 | Minecraft | 1.21.1 |
 | NeoForge | 21.1.x (`[21,)`) |
-| Create | 6.0.8 以降の 6.x (`[6.0.8,7)`) |
-| Flywheel | 1.x (Create に同梱のもので動きます) |
+| Create | 6.0.8 or later 6.x (`[6.0.8,7)`) |
+| Flywheel | 1.x (the one bundled with Create works) |
 
-クライアント専用です。サーバーには入れなくて構いません。
+Client side only. It does not need to be installed on a server.
 
-## 機能 / Features
+## Features
 
-- 列車の足跡の形で、地面に影を描きます。ヨー(向き)や坂での傾きに合わせます。
-- 影の縁は、外側に向かって少しずつ薄くなります。
-- 列車の下に張り出したブロックがあれば、その下の床にも影を落とします。
-- 列車の横にある壁(トンネルの壁、ホームの縁、地面の段差)の側面も、近いほど濃く暗くします。
-- Create の線路(坂とカーブを含む)の上にも影を描きます。線路のモデルの面をもう一度、黒い半透明で重ねて描くので、レールと枕木に影が乗ります。
-- 動画設定の「エンティティの影」を切ると、影は描きません。
-- シェーダーパックの使用中は、影を描きません(パック側の影が使われるため)。
+- Draws the shadow on the ground in the shape of the carriage's footprint, following its heading and its tilt on slopes.
+- The edge of the shadow fades out gradually.
+- A block that hangs under the train also gets the shadow, and so does the floor under that block.
+- The sides of walls next to a train (tunnel walls, platform edges, steps in the ground) are darkened too, more the closer they are.
+- Shadows lie on Create's track as well, slopes and curves included. The faces of the track's own model are drawn again, black and translucent, so the rails and sleepers take the shadow.
+- Nothing is drawn when "Entity Shadows" is off in the video settings.
+- Nothing is drawn while a shader pack is in use: the pack shades the world itself, trains included.
 
-## 設定 / Configuration
+## Configuration
 
-Mods → Create: Train Shadows → Config から変えられます。変更はその場で反映されます。設定ファイルは `config/create_train_shadows-client.toml` です。
+Open Mods → Create: Train Shadows → Config. Changes apply at once. The file is `config/create_train_shadows-client.toml`.
 
-| 項目 | 内容 |
+| Option | What it does |
 |---|---|
-| `enabled` | 影を描くかどうか |
-| `opacity` | 影が最も濃い所の濃さ(バニラは 0.5) |
-| `fadeDistance` | 影が完全に消える、カメラからの距離 |
-| `fadeHeight` | 列車が地面から高いとき、影が消えるまでの高さ |
-| `graceHeight` | 地面に接しているとみなす高さ(Create は列車を線路の 1 ブロック上に置きます) |
-| `margin` | 影が列車の輪郭の外へ広がる距離 |
-| `softness` | 影の縁がぼやける幅 |
-| `sideReach` / `sideOpacity` | 壁の影の届く距離と濃さ(`sideReach = 0` で壁には描きません) |
-| `trackShadowMode` | `MODEL`(線路のモデルに影を重ねる)、`PLATE`(レールの高さに板を敷く、軽い)、`OFF` |
+| `enabled` | Draw the shadows or not |
+| `opacity` | How dark the shadow is where it is darkest (vanilla uses 0.5) |
+| `fadeDistance` | Camera distance at which the shadow has faded out completely |
+| `fadeHeight` | How many blocks it takes for the shadow to fade out when the train is high above the ground |
+| `graceHeight` | Height that still counts as touching the ground (Create hangs a train one block above its track) |
+| `margin` | How far the shadow reaches past the outline of the train |
+| `softness` | Width of the soft band along the edge of the shadow |
+| `sideReach` / `sideOpacity` | How far wall shadows reach and how dark they are (`sideReach = 0` draws none) |
+| `trackShadowMode` | `MODEL` (shade the track's own model), `PLATE` (a translucent plate at rail height, cheaper) or `OFF` |
 
-## ビルド / Building
+## Building
 
-Java 21 が必要です。
+Java 21 is required.
 
 ```
 ./gradlew build
 ```
 
-jar は `build/libs/` にできます。ファイル名は `create_train_shadows-neoforge-1.21.1-<version>.jar` です。開発用のクライアントは `./gradlew runClient` で起動します。実行する Create の版は `-Pcreate_version_runtime=6.0.8-169` のように選べます(コンパイルは 6.0.8 に対して行います)。
+The jar is written to `build/libs/` as `create_train_shadows-neoforge-1.21.1-<version>.jar`. `./gradlew runClient` starts a development client; the Create version it runs against can be chosen, for example with `-Pcreate_version_runtime=6.0.8-169` (compilation is always against 6.0.8).
 
-テストは `./gradlew test` です。影の計算は `core` パッケージにあり、Minecraft の型を使わないので、単体テストで確かめています。
+Tests run with `./gradlew test`. The shadow maths lives in the `core` package, which uses no Minecraft types, so it is covered by unit tests.
 
-## ブランチ / Branches
+## Branches
 
-Minecraft のバージョンとローダーごとにブランチを分けます。名前は `mc<バージョン>-<ローダー>` です。
+There is one branch per Minecraft version and loader, named `mc<version>-<loader>`.
 
-- `mc1.21.1-neoforge`: 現在のブランチ
-- `mc1.20.1-forge`: 予定
+- `mc1.21.1-neoforge`: this branch
+- `mc1.20.1-forge`: planned
 
-## ライセンス / License
+## License
 
 [MIT License](LICENSE.md)
