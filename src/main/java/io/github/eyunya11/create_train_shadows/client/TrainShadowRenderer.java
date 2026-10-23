@@ -84,6 +84,9 @@ public class TrainShadowRenderer extends CarriageContraptionEntityRenderer {
         if (!Config.enabled()) {
             return Outcome.DISABLED_IN_MOD_CONFIG;
         }
+        if (ShaderPacks.inUse()) {
+            return Outcome.SHADER_PACK_IN_USE; // the pack shades the world itself, shadow map included
+        }
         if (entity.isInvisible()) {
             return Outcome.INVISIBLE;
         }

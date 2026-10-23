@@ -8,8 +8,8 @@ import io.github.eyunya11.create_train_shadows.Create_train_shadows;
  */
 final class Diagnostics {
     enum Outcome {
-        DRAWN, NOT_READY, SHADOWS_OFF_IN_VIDEO_SETTINGS, DISABLED_IN_MOD_CONFIG, INVISIBLE, OTHER_LEVEL, NO_CONTRAPTION,
-        TOO_FAR, NO_FOOTPRINT
+        DRAWN, NOT_READY, SHADOWS_OFF_IN_VIDEO_SETTINGS, DISABLED_IN_MOD_CONFIG, SHADER_PACK_IN_USE, INVISIBLE,
+        OTHER_LEVEL, NO_CONTRAPTION, TOO_FAR, NO_FOOTPRINT
     }
 
     private static final boolean ENABLED = Boolean.getBoolean("create_train_shadows.debug");
